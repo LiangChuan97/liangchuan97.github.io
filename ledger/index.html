@@ -17,6 +17,10 @@ h2{margin:0;font:600 19px/1.1 Oswald,Impact,"Arial Narrow",sans-serif;letter-spa
 label.d{display:flex;flex-direction:column;gap:4px;color:var(--mute);font-size:13px}
 .upd{display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center}.upd label.d{align-items:center}.upd input{width:auto;text-align:center}input:disabled{opacity:.8;cursor:not-allowed}
 @media(max-width:720px){header{grid-template-columns:1fr;justify-items:center;text-align:center}}
+[hidden]{display:none!important}
+.hb{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.lp{max-width:1100px;margin:16px auto 40px;padding:0 24px}@media(max-width:720px){.lp{padding:0 12px}}
+.ls td{padding:6px 8px;border-top:1px solid var(--line)}
 main{display:grid;grid-template-columns:repeat(12,1fr);gap:16px;padding:16px 24px 40px;max-width:1500px;margin:auto}
 .p{background:var(--panel);border:1px solid var(--line);border-top:3px solid var(--brass);border-radius:3px;padding:14px;min-width:0}
 .ph{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:10px}
@@ -65,8 +69,9 @@ button.x{border-color:var(--line);color:var(--mute);padding:5px 9px}button.x:hov
   <div class="mute" style="margin-top:8px">Tick “Repeats monthly” for income that arrives every month on that day. It shows in the balance timeline for about three months ahead.</div>
   <textarea data-note="income" placeholder="Comments on income…"></textarea></section>
 
- <section class="p s4"><div class="ph"><h2>People owe me</h2><span class="tot pos" id="tot-owedMe"></span></div>
+ <section class="p s4"><div class="ph"><div class="hb"><h2>People owe me</h2><button type="button" onclick="showView('log')">Expense log</button></div><span class="tot pos" id="tot-owedMe"></span></div>
   <div class="w" id="t-owedMe"></div><button onclick="add('owedMe')">+ Add person</button>
+  <div id="logsum"></div>
   <div class="ph" style="margin-top:20px"><h2>I owe people</h2><span class="tot neg" id="tot-iOwe"></span></div>
   <div class="w" id="t-iOwe"></div><button onclick="add('iOwe')">+ Add person</button>
   <textarea data-note="owe" placeholder="Comments on debts…"></textarea></section>
@@ -88,7 +93,16 @@ button.x{border-color:var(--line);color:var(--mute);padding:5px 9px}button.x:hov
   <div class="w" id="t-fixed"></div><button onclick="add('fixed')">+ Add expense</button>
   <div class="mute" style="margin-top:8px">Each row is one charge on its bill date and lands in that month’s card bill. Tick “Repeats monthly” for a charge that recurs every month from that date. Statement day is set per card in the credit card table. A bill date after a card’s statement day goes into the next month’s bill (for example, HSBC statement day 5: 6 Oct to 5 Nov is the November statement). Leave it blank for no cut-off. Choose Bank for a charge paid straight from your bank account: it is deducted on its bill date in the balance timeline and is not added to any card bill. The total at the top is the amount still to be billed: expenses dated after your last-updated date, each counted once.</div>
   <textarea data-note="fixed" placeholder="Comments on fixed expenses…"></textarea></section>
-</main>
+ </main>
+<div class="lp" id="view-log" hidden>
+ <section class="p">
+  <div class="ph"><div class="hb"><button type="button" onclick="showView('main')">Back to tracker</button><h2>Expense log: money owed to me</h2></div><span class="tot pos" id="tot-log"></span></div>
+  <div class="mute" style="margin-bottom:10px">Enter each expense you paid for someone. Each person’s name and total appear under “People owe me” on the main page. The name “LC” is shown but never added to your bank balance or the totals.</div>
+  <div class="w" id="t-log"></div><button onclick="add('log')">+ Add expense</button>
+  <div id="logbyname" class="w" style="margin-top:18px"></div>
+  <textarea data-note="log" placeholder="Comments on the expense log…"></textarea>
+ </section>
+</div>
 <script>
 const CARDS=['HSBC','Citibank','UOB','DBS'];
 const CUT={HSBC:5,Citibank:5,DBS:12};
@@ -99,20 +113,22 @@ const money=n=>(n<0?'−':'')+'$'+Math.abs(n).toLocaleString('en-SG',{minimumFra
 const esc=s=>String(s??'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
 const sum=(a,k)=>a.reduce((t,x)=>t+(xv(x[k])||0),0);
 let S=null;try{S=JSON.parse(localStorage.getItem('ledger-v1'))}catch(e){}
-if(!S){S={updated:iso(new Date()),bank:'',useMe:true,useI:true,income:[],owedMe:[],iOwe:[],loans:[],fixed:[],notes:{},
+if(!S){S={updated:iso(new Date()),bank:'',useMe:true,useI:true,income:[],owedMe:[],iOwe:[],log:[],loans:[],fixed:[],notes:{},
  cards:Object.fromEntries(CARDS.map((c,i)=>[c,{day:[15,20,25,28][i],cur:'',next:'',c:''}]))}}
 S.fixed.forEach(f=>{if(!f.dt){const u=pd(S.updated);f.dt=iso(new Date(u.getFullYear(),u.getMonth(),Math.min(+f.day||1,new Date(u.getFullYear(),u.getMonth()+1,0).getDate())))}});
 CARDS.forEach(n=>{const c=S.cards[n];if(c&&c.stmt===undefined)c.stmt=CUT[n]||''});
 const save=()=>{try{localStorage.setItem('ledger-v1',JSON.stringify(S))}catch(e){}};
+if(!S.log)S.log=[];
 const cardSel={k:'card',t:'select'},cardBankSel={k:'card',t:'select',bank:true};
 const SEC={
+ log:{cols:[{k:'dt',t:'date'},{k:'n',ph:'Name'},{k:'d',ph:'Description of expense'},{k:'a',t:'math',ph:'Amount',w:100},{k:'c',ph:'Comment'}],def:()=>({dt:iso(new Date()),n:'',d:'',a:'',c:''}),amt:'a'},
  income:{cols:[{k:'d',ph:'Description'},{k:'a',t:'math',ph:'Amount',w:90},{k:'dt',t:'date'},{k:'rep',t:'checkbox'},{k:'c',ph:'Comment'}],def:()=>({d:'',a:'',dt:S.updated,rep:false,c:''}),amt:'a'},
  owedMe:{cols:[{k:'n',ph:'Name'},{k:'a',t:'math',ph:'Amount',w:90},{k:'c',ph:'Comment'}],def:()=>({n:'',a:'',c:''}),amt:'a'},
  iOwe:{cols:[{k:'n',ph:'Name'},{k:'a',t:'math',ph:'Amount',w:90},{k:'c',ph:'Comment'}],def:()=>({n:'',a:'',c:''}),amt:'a'},
  loans:{cols:[{k:'n',ph:'Loan'},{k:'rem',t:'number',ph:'Remaining',w:100},{k:'a',t:'number',ph:'Monthly',w:90},{t:'calc'},{k:'paid',t:'months'},{k:'c',ph:'Comment'}],def:()=>({n:'',rem:'',a:'',paid:[],c:''}),amt:'rem'},
  fixed:{cols:[{k:'d',ph:'Description'},{k:'a',t:'number',ph:'Amount',w:90},{k:'dt',t:'date'},cardBankSel,{k:'rep',t:'checkbox'},{k:'c',ph:'Comment'}],def:()=>({d:'',a:'',dt:S.updated,card:'HSBC',rep:false,c:''}),amt:'a'}
 };
-const HEAD={income:['Description','Amount','Date','Repeats monthly','Comment'],owedMe:['Name','Amount','Comment'],iOwe:['Name','Amount','Comment'],loans:['Loan','Remaining amount','Monthly','After payments','Paid months','Comment'],fixed:['Description','Amount','Bill date','Card / Bank','Repeats monthly','Comment']};
+const HEAD={log:['Date','Name','Description','Amount','Comment'],income:['Description','Amount','Date','Repeats monthly','Comment'],owedMe:['Name','Amount','Comment'],iOwe:['Name','Amount','Comment'],loans:['Loan','Remaining amount','Monthly','After payments','Paid months','Comment'],fixed:['Description','Amount','Bill date','Card / Bank','Repeats monthly','Comment']};
 const mkey=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
 const mfull=k=>{const[y,m]=k.split('-').map(Number);return new Date(y,m-1,1).toLocaleDateString('en-GB',{month:'long',year:'numeric'})};
 const mlab=a=>a.length?[...a].sort().map(k=>{const[y,m]=k.split('-').map(Number);return new Date(y,m-1,1).toLocaleDateString('en-GB',{month:'short',year:'2-digit'})}).join(', '):'Select months';
@@ -151,9 +167,16 @@ function cardTotals(n){
 const mon=off=>{const u=pd(S.updated);return new Date(u.getFullYear(),u.getMonth()+off,1).toLocaleDateString('en-GB',{month:'long'})};
 const cls=n=>n<0?'neg':'';
 function occ(d0,rep,u){if(!rep)return d0>=u?[d0]:[];const out=[],end=new Date(u.getFullYear(),u.getMonth()+3,0);for(let k=0;k<60;k++){const y=d0.getFullYear(),m=d0.getMonth()+k,dim=new Date(y,m+1,0).getDate(),d=new Date(y,m,Math.min(d0.getDate(),dim));if(d>end)break;if(d>=u)out.push(d)}return out}
-function mathNotes(){['income','owedMe','iOwe'].forEach(k=>S[k].forEach((r,i)=>{const e=document.getElementById('eq-'+k+'-'+i);if(!e)return;const raw=String(r.a??'').trim(),pl=/^[0-9]*\.?[0-9]*$/.test(raw.replace(/[$,\s]/g,'')),v=xv(raw);e.className='ev '+(isNaN(v)?'neg':'mute');e.textContent=raw===''||pl?'':(isNaN(v)?'Check formula':'= '+money(v))}))}
-function calc(){mathNotes();
- const me=sum(S.owedMe,'a'),io=sum(S.iOwe,'a'),bank=xv(S.bank)||0;
+function showView(v){document.querySelector('main').hidden=v==='log';document.getElementById('view-log').hidden=v!=='log';window.scrollTo(0,0)}
+const isLC=n=>String(n||'').trim().toLowerCase()==='lc';
+function logGroups(){const g=new Map();S.log.forEach(r=>{const a=xv(r.a)||0,nm=String(r.n||'').trim()||'(no name)',k=nm.toLowerCase();if(!a&&!String(r.n||'').trim())return;const e=g.get(k)||{n:nm,t:0,c:0,lc:isLC(nm)};e.t+=a;e.c++;g.set(k,e)});return[...g.values()]}
+function logViews(){const gs=logGroups(),tot=gs.filter(x=>!x.lc).reduce((t,x)=>t+x.t,0),tg=x=>x.lc?' <span class="tag">not in balance</span>':'';
+ document.getElementById('tot-log').textContent=money(tot);
+ document.getElementById('logsum').innerHTML=gs.length?`<div class="mute" style="margin:12px 0 4px">From expense log</div><table class="ls"><tbody>${gs.map(x=>`<tr><td>${esc(x.n)}${tg(x)}</td><td class="n ${x.lc?'mute':'pos'}">${money(x.t)}</td></tr>`).join('')}</tbody></table>`:'';
+ document.getElementById('logbyname').innerHTML=gs.length?`<table class="ls"><thead><tr><th>Name</th><th class="n">Entries</th><th class="n">Total owed</th></tr></thead><tbody>${gs.map(x=>`<tr><td>${esc(x.n)}${tg(x)}</td><td class="n">${x.c}</td><td class="n ${x.lc?'mute':'pos'}"><b>${money(x.t)}</b></td></tr>`).join('')}</tbody></table>`:''}
+function mathNotes(){['income','owedMe','iOwe','log'].forEach(k=>S[k].forEach((r,i)=>{const e=document.getElementById('eq-'+k+'-'+i);if(!e)return;const raw=String(r.a??'').trim(),pl=/^[0-9]*\.?[0-9]*$/.test(raw.replace(/[$,\s]/g,'')),v=xv(raw);e.className='ev '+(isNaN(v)?'neg':'mute');e.textContent=raw===''||pl?'':(isNaN(v)?'Check formula':'= '+money(v))}))}
+function calc(){mathNotes();logViews();
+ const lg=sum(S.log.filter(r=>!isLC(r.n)),'a'),me=sum(S.owedMe.filter(r=>!isLC(r.n)),'a')+lg,io=sum(S.iOwe,'a'),bank=xv(S.bank)||0;
  const adj=bank+(S.useMe?me:0)-(S.useI?io:0);
  const set=(id,v)=>document.getElementById(id).textContent=v;
  set('c-bank',money(bank));{const raw=String(S.bank??'').trim(),pl=/^[0-9]*\.?[0-9]*$/.test(raw.replace(/[$,\s]/g,'')),v=xv(raw),q=document.getElementById('bank-eq');q.className=isNaN(v)?'neg':'mute';q.textContent=raw===''||pl?'':(isNaN(v)?'Check formula':'= '+money(v))}set('c-me',S.useMe?money(me):'off');set('c-io',S.useI?money(-io):'off');
