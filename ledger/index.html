@@ -42,7 +42,7 @@ th{text-align:left;font:500 13px Barlow,sans-serif;color:var(--mute);padding:0 4
 td{padding:3px 3px;vertical-align:middle}
 td.n,th.n{text-align:right}
 #t-owedMe td{vertical-align:top}
-.tlf{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-bottom:10px}.msel{position:relative}.msel>button{padding:7px 12px;min-width:150px;text-align:left}.mpan{position:absolute;z-index:20;top:100%;left:0;margin-top:4px;min-width:180px;max-height:260px;overflow-y:auto;overscroll-behavior:contain;background:var(--panel);color:var(--text);border:1px solid var(--brass);border-radius:3px;padding:4px;box-shadow:0 6px 18px rgba(0,0,0,.4)}.mpan label{display:flex;flex-direction:row;gap:8px;align-items:center;justify-content:flex-start;padding:6px 8px;cursor:pointer;white-space:nowrap;color:var(--text);font-size:14px}.mpan label:hover{background:var(--panel2)}.mpan input{width:auto;flex:none;margin:0;padding:0;accent-color:var(--brass)}.mpan[hidden]{display:none}
+.tlf{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-bottom:10px}.msel{position:relative}.msel>button{padding:7px 12px;min-width:150px;text-align:left}.mpan{position:absolute;z-index:20;top:100%;left:0;margin-top:4px;min-width:180px;max-height:260px;overflow-y:auto;overscroll-behavior:contain;background:var(--panel);color:var(--text);border:1px solid var(--brass);border-radius:3px;padding:4px;box-shadow:0 6px 18px rgba(0,0,0,.4)}.mpan label{display:flex;flex-direction:row;gap:8px;align-items:center;justify-content:flex-start;padding:6px 8px;cursor:pointer;white-space:nowrap;color:var(--text);font-size:14px}.mpan label:hover{background:var(--panel2)}.mpan input{width:auto;flex:none;margin:0;padding:0;accent-color:var(--brass)}.mpan[hidden]{display:none}.mpan label.yr{font-weight:600;border-top:1px solid var(--line);margin-top:2px}.mpan label.mo{padding-left:22px}
 .chip.on{background:var(--brass);color:#171b1f}
 .sg{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:6px}.chip{padding:3px 10px;font-size:13px}
 #view-log .p{position:relative}.flt{padding:2px 8px;font-size:12px;margin-left:6px}
@@ -95,7 +95,7 @@ button.x{border-color:var(--line);color:var(--mute);padding:5px 9px}button.x:hov
   <textarea class="auto" data-note="owe" placeholder="Comments on debts…"></textarea></section>
 
  <section class="p s12"><div class="ph"><h2>Balance timeline</h2><span class="mute">Starts from the adjusted balance. Income adds, card payments deduct, by date.</span></div>
-  <div class="w" id="timeline"></div>
+  <div class="tlf" id="tl-flt"></div><div class="w" id="timeline"></div>
   <textarea data-note="timeline" placeholder="Comments on timeline…"></textarea></section>
 
  <section class="p s12"><div class="ph"><h2>Credit card bills</h2><span class="mute">Enter bills already posted. Fixed expenses and loans are added automatically.</span></div>
@@ -292,13 +292,15 @@ function calc(){mathNotes();logViews();
  const stRow=`<tr class="st"><td>${fd(u)}</td><td>Starting balance</td><td class="n">—</td><td class="n">${money(adj)}</td></tr>`;
  let b=adj,tr=has(mk(u))?stRow:'',bf=has(mk(u));
  ev.forEach(e=>{const before=b;b+=e.a;if(!has(mk(e.d)))return;if(!bf){const[y,m]=mk(e.d).split('-').map(Number);tr+=`<tr class="st"><td>${fd(new Date(y,m-1,1))}</td><td>Balance brought forward</td><td class="n">—</td><td class="n">${money(before)}</td></tr>`;bf=true}tr+=`<tr><td>${fd(e.d)}</td><td><span class="tag ${e.t}">${e.t==='in'?'Income':'Payment'}</span>${esc(e.l)}</td><td class="n ${e.a<0?'neg':'pos'}">${e.a<0?'−':'+'}${money(Math.abs(e.a))}</td><td class="n ${cls(b)}"><b>${money(b)}</b></td></tr>`});
- const lbl=!sel.length?'All months':sel.length<=2?sel.map(ml).join(', '):sel.length+' months selected';
- const flt=`<div class="tlf"><span class="mute">Month</span><div class="msel"><button type="button" id="tlBtn" aria-haspopup="true" aria-expanded="${tlOpen}">${lbl} <span aria-hidden="true">▾</span></button><div class="mpan" id="tlPan"${tlOpen?'':' hidden'}><label><input type="checkbox" data-m="" ${!sel.length?'checked':''}> All months</label>${months.map(k=>`<label><input type="checkbox" data-m="${k}" ${sel.includes(k)?'checked':''}> ${ml(k)}</label>`).join('')}</div></div></div>`;
- document.getElementById('timeline').innerHTML=flt+`<table class="tl"><thead><tr><th>Date</th><th>Event</th><th class="n">Amount</th><th class="n">Balance after</th></tr></thead><tbody>${tr}</tbody></table>`}
+ TLM=months;const yrs=[...new Set(months.map(k=>k.slice(0,4)))],yAll=y=>months.filter(k=>k.startsWith(y)).every(k=>sel.includes(k));
+ const parts=[...yrs.filter(yAll),...sel.filter(k=>!yAll(k.slice(0,4))).map(ml)];
+ const lbl=!sel.length?'All months':parts.length<=2?parts.join(', '):sel.length+' months selected';
+ document.getElementById('tl-flt').innerHTML=`<span class="mute">Month / year</span><div class="msel"><button type="button" id="tlBtn" aria-haspopup="true" aria-expanded="${tlOpen}">${lbl} <span aria-hidden="true">▾</span></button><div class="mpan" id="tlPan"${tlOpen?'':' hidden'}><label><input type="checkbox" data-m="" ${!sel.length?'checked':''}> All months</label>${yrs.map(y=>`<label class="yr"><input type="checkbox" data-y="${y}" ${yAll(y)?'checked':''}> ${y} (whole year)</label>${months.filter(k=>k.startsWith(y)).map(k=>`<label class="mo"><input type="checkbox" data-m="${k}" ${sel.includes(k)?'checked':''}> ${ml(k)}</label>`).join('')}`).join('')}</div></div>`;
+ document.getElementById('timeline').innerHTML=`<table class="tl"><thead><tr><th>Date</th><th>Event</th><th class="n">Amount</th><th class="n">Balance after</th></tr></thead><tbody>${tr}</tbody></table>`}
 // init
-var tlOpen=false;
-document.getElementById('timeline').addEventListener('click',e=>{if(e.target.closest('#tlBtn')){tlOpen=!tlOpen;const p=document.getElementById('tlPan');p.hidden=!tlOpen;document.getElementById('tlBtn').setAttribute('aria-expanded',tlOpen)}});
-document.getElementById('timeline').addEventListener('change',e=>{const m=e.target.dataset&&e.target.dataset.m;if(m===undefined)return;const cur=new Set(S.tlMonths||[]);if(m==='')cur.clear();else if(e.target.checked)cur.add(m);else cur.delete(m);S.tlMonths=[...cur].sort();save();calc()});
+var tlOpen=false,TLM=[];
+document.getElementById('tl-flt').addEventListener('click',e=>{if(e.target.closest('#tlBtn')){tlOpen=!tlOpen;document.getElementById('tlPan').hidden=!tlOpen;document.getElementById('tlBtn').setAttribute('aria-expanded',tlOpen)}});
+document.getElementById('tl-flt').addEventListener('change',e=>{const t=e.target,cur=new Set(S.tlMonths||[]);if(t.dataset.y){TLM.filter(k=>k.startsWith(t.dataset.y)).forEach(k=>t.checked?cur.add(k):cur.delete(k))}else if(t.dataset.m===undefined)return;else if(t.dataset.m==='')cur.clear();else t.checked?cur.add(t.dataset.m):cur.delete(t.dataset.m);S.tlMonths=[...cur].sort();save();const p0=document.getElementById('tlPan'),sc=p0?p0.scrollTop:0;calc();const p1=document.getElementById('tlPan');if(p1)p1.scrollTop=sc});
 document.addEventListener('click',e=>{if(tlOpen&&!e.target.closest('.msel')){tlOpen=false;const p=document.getElementById('tlPan');if(p)p.hidden=true}});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&tlOpen){tlOpen=false;const p=document.getElementById('tlPan');if(p)p.hidden=true}});
 const U=document.getElementById('updated');U.value=S.updated;U.oninput=()=>{if(U.value){S.updated=U.value;save();calc()}};
