@@ -41,7 +41,7 @@ table{width:100%;border-collapse:collapse}
 th{text-align:left;font:500 13px Barlow,sans-serif;color:var(--mute);padding:0 4px 6px;white-space:nowrap}
 td{padding:3px 3px;vertical-align:middle}
 td.n,th.n{text-align:right}
-tr.lg{cursor:pointer}tr.lg input{cursor:pointer;color:var(--mute)}
+#t-owedMe td{vertical-align:top}
 #t-owedMe td,#t-iOwe td,#t-income td,#t-log td{vertical-align:top}
 #t-owedMe button.x,#t-iOwe button.x,#t-income button.x,#t-log button.x{margin-top:4px}
 #t-income td input[type=checkbox]{margin-top:12px}
@@ -128,7 +128,7 @@ if(!S){S={updated:iso(new Date()),bank:'',useMe:true,useI:true,income:[],owedMe:
 S.fixed.forEach(f=>{if(!f.dt){const u=pd(S.updated);f.dt=iso(new Date(u.getFullYear(),u.getMonth(),Math.min(+f.day||1,new Date(u.getFullYear(),u.getMonth()+1,0).getDate())))}});
 CARDS.forEach(n=>{const c=S.cards[n];if(c&&c.stmt===undefined)c.stmt=CUT[n]||''});
 const save=()=>{try{localStorage.setItem('ledger-v1',JSON.stringify(S))}catch(e){}};
-if(!S.log)S.log=[];
+if(!S.log)S.log=[];if(!S.logc)S.logc={};
 const cardSel={k:'card',t:'select'},cardBankSel={k:'card',t:'select',bank:true};
 const SEC={
  log:{cols:[{k:'dt',t:'date'},{k:'n',ph:'Name'},{k:'d',ph:'Description of expense'},{k:'a',t:'math',ph:'Amount',w:100},{k:'c',ph:'Comment'}],def:()=>({dt:iso(new Date()),n:'',d:'',a:'',c:''}),amt:'a'},
@@ -181,11 +181,18 @@ const cls=n=>n<0?'neg':'';
 function occ(d0,rep,u){if(!rep)return d0>=u?[d0]:[];const out=[],end=new Date(u.getFullYear(),u.getMonth()+3,0);for(let k=0;k<60;k++){const y=d0.getFullYear(),m=d0.getMonth()+k,dim=new Date(y,m+1,0).getDate(),d=new Date(y,m,Math.min(d0.getDate(),dim));if(d>end)break;if(d>=u)out.push(d)}return out}
 function showView(v){document.querySelector('main').hidden=v==='log';document.getElementById('view-log').hidden=v!=='log';window.scrollTo(0,0)}
 const isLC=n=>String(n||'').trim().toLowerCase()==='lc';
-function logGroups(){const g=new Map();S.log.forEach(r=>{const a=xv(r.a)||0,nm=String(r.n||'').trim()||'(no name)',k=nm.toLowerCase();if(!a&&!String(r.n||'').trim())return;const e=g.get(k)||{n:nm,t:0,c:0,lc:isLC(nm)};e.t+=a;e.c++;g.set(k,e)});return[...g.values()]}
+const lgKey=r=>String(r.n||'').trim().toLowerCase();
+function lgAfter(){save();draw('log');calc()}
+function lgRename(k,v){const nv=String(v).trim();S.log.forEach(r=>{if(lgKey(r)===k)r.n=nv});if(S.logc&&S.logc[k]!==undefined){const nk=nv.toLowerCase();if(nk!==k){if(S.logc[nk]===undefined)S.logc[nk]=S.logc[k];delete S.logc[k]}}lgAfter()}
+function lgAmount(k,v){const nt=xv(v);if(isNaN(nt)){calc();return}const rows=S.log.filter(r=>lgKey(r)===k),cur=rows.reduce((t,r)=>t+(xv(r.a)||0),0),d=Math.round((nt-cur)*100)/100;if(!d){calc();return}let adj=rows.find(r=>r.adj);if(adj){const na=Math.round(((xv(adj.a)||0)+d)*100)/100;if(!na)S.log.splice(S.log.indexOf(adj),1);else adj.a=String(na)}else S.log.push({dt:iso(new Date()),n:rows.length?rows[0].n:'',d:'Adjustment',a:String(d),c:'',adj:true});lgAfter()}
+function lgComment(k,v){S.logc=S.logc||{};if(String(v).trim())S.logc[k]=v;else delete S.logc[k];save();calc()}
+const lgPending=new WeakMap();
+function lgDel(k,btn){if(lgPending.has(btn)){clearTimeout(lgPending.get(btn));S.log=S.log.filter(r=>lgKey(r)!==k);if(S.logc)delete S.logc[k];lgAfter();return}btn.textContent='Sure?';btn.style.width='auto';btn.title='Click again to delete this person and all their expense log entries';lgPending.set(btn,setTimeout(()=>{lgPending.delete(btn);btn.textContent='×';btn.style.width=''},4000))}
+function logGroups(){const g=new Map();S.log.forEach(r=>{const a=xv(r.a)||0,nm=String(r.n||'').trim()||'(no name)',k=nm.toLowerCase();if(!a&&!String(r.n||'').trim())return;const e=g.get(k)||{n:nm,k:(String(r.n||'').trim()?k:''),t:0,c:0,lc:isLC(nm)};e.t+=a;e.c++;g.set(k,e)});return[...g.values()]}
 function logViews(){const gs=logGroups(),tot=gs.filter(x=>!x.lc).reduce((t,x)=>t+x.t,0),tg=x=>x.lc?' <span class="tag">not in balance</span>':'';
  document.getElementById('tot-log').textContent=money(tot);
- {const tb=document.querySelector('#t-owedMe tbody');if(tb){tb.querySelectorAll('tr.lg').forEach(r=>r.remove());const empty=tb.querySelector('td.mute[colspan]');if(empty)empty.closest('tr').hidden=gs.length>0;
-  gs.forEach(x=>{const tr=document.createElement('tr');tr.className='lg';tr.title='Entered in the Expense log. Click to open it.';tr.onclick=()=>showView('log');tr.innerHTML=`<td><input readonly tabindex="-1" value="${esc(x.n)}" aria-label="Name"></td><td><input readonly tabindex="-1" value="${x.t.toFixed(2)}" aria-label="Amount"></td><td><input readonly tabindex="-1" value="${x.lc?'Not in balance':'Expense log'}" aria-label="Source"></td><td></td>`;tb.appendChild(tr)})}}
+ {const tb=document.querySelector('#t-owedMe tbody');if(tb){const have=tb.querySelectorAll('tr.lg'),sig=JSON.stringify([gs.map(x=>[x.k,x.n,x.t]),S.logc]);if(!(have.length===gs.length&&tb.dataset.sig===sig)){have.forEach(r=>r.remove());tb.dataset.sig=sig;const empty=tb.querySelector('td.mute[colspan]');if(empty)empty.closest('tr').hidden=gs.length>0;
+  gs.forEach(x=>{const tr=document.createElement('tr');tr.className='lg';tr.innerHTML=`<td><input value="${esc(x.k===''?'':x.n)}" placeholder="Name" aria-label="Name" onchange="lgRename('${esc(x.k).replace(/'/g,"\\'")}',this.value)"></td><td><input inputmode="decimal" autocomplete="off" value="${x.t.toFixed(2)}" aria-label="Amount" onchange="lgAmount('${esc(x.k).replace(/'/g,"\\'")}',this.value)"></td><td><input value="${esc((S.logc||{})[x.k]||'')}" placeholder="${x.lc?'Not in balance':'Expense log'}" aria-label="Comment" onchange="lgComment('${esc(x.k).replace(/'/g,"\\'")}',this.value)"></td><td><button class="x" type="button" onclick="lgDel('${esc(x.k).replace(/'/g,"\\'")}',this)" aria-label="Remove ${esc(x.n)} and all their expense log entries">×</button></td>`;tb.appendChild(tr)})}}}
  document.getElementById('logbyname').innerHTML=gs.length?`<table class="ls"><thead><tr><th>Name</th><th class="n">Entries</th><th class="n">Total owed</th></tr></thead><tbody>${gs.map(x=>`<tr><td>${esc(x.n)}${tg(x)}</td><td class="n">${x.c}</td><td class="n ${x.lc?'mute':'pos'}"><b>${money(x.t)}</b></td></tr>`).join('')}</tbody></table>`:''}
 function mathNotes(){['income','owedMe','iOwe','log'].forEach(k=>S[k].forEach((r,i)=>{const e=document.getElementById('eq-'+k+'-'+i);if(!e)return;const raw=String(r.a??'').trim(),pl=/^[0-9]*\.?[0-9]*$/.test(raw.replace(/[$,\s]/g,'')),v=xv(raw);e.className='ev '+(isNaN(v)?'neg':'mute');e.textContent=raw===''||pl?'':(isNaN(v)?'Check formula':'= '+money(v))}))}
 function calc(){mathNotes();logViews();
