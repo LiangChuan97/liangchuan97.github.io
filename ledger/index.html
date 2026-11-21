@@ -42,7 +42,7 @@ th{text-align:left;font:500 13px Barlow,sans-serif;color:var(--mute);padding:0 4
 td{padding:3px 3px;vertical-align:middle}
 td.n,th.n{text-align:right}
 #t-owedMe td{vertical-align:top}
-.tlf{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-bottom:10px}.tlf select{width:auto;min-width:150px}
+.tlf{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-bottom:10px}.msel{position:relative}.msel>button{padding:7px 12px;min-width:150px;text-align:left}.mpan{position:absolute;z-index:20;top:100%;left:0;margin-top:4px;min-width:180px;background:var(--card,#f4f2ec);border:1px solid #8a6d1f;padding:6px;box-shadow:0 6px 18px rgba(0,0,0,.25)}.mpan label{display:flex;gap:8px;align-items:center;padding:5px 6px;cursor:pointer}.mpan label:hover{background:rgba(138,109,31,.15)}.mpan[hidden]{display:none}
 .chip.on{background:var(--brass);color:#171b1f}
 .sg{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:6px}.chip{padding:3px 10px;font-size:13px}
 #view-log .p{position:relative}.flt{padding:2px 8px;font-size:12px;margin-left:6px}
@@ -142,7 +142,7 @@ if(!S){S={updated:iso(new Date()),bank:'',useMe:true,useI:true,income:[],owedMe:
 S.fixed.forEach(f=>{if(!f.dt){const u=pd(S.updated);f.dt=iso(new Date(u.getFullYear(),u.getMonth(),Math.min(+f.day||1,new Date(u.getFullYear(),u.getMonth()+1,0).getDate())))}});
 CARDS.forEach(n=>{const c=S.cards[n];if(c&&c.stmt===undefined)c.stmt=CUT[n]||''});
 const save=()=>{try{localStorage.setItem('ledger-v1',JSON.stringify(S))}catch(e){}};
-if(!S.log)S.log=[];if(!S.logSubHide)S.logSubHide={};if(!S.logFilter)S.logFilter=[];if(S.tlMonth===undefined)S.tlMonth='';if(!S.logc)S.logc={};
+if(!S.log)S.log=[];if(!S.logSubHide)S.logSubHide={};if(!S.logFilter)S.logFilter=[];if(!Array.isArray(S.tlMonths))S.tlMonths=S.tlMonth?[S.tlMonth]:[];if(!S.logc)S.logc={};
 const cardSel={k:'card',t:'select'},cardBankSel={k:'card',t:'select',bank:true};
 const SEC={
  log:{cols:[{k:'n',ph:'Name'},{k:'d',ph:'Description of expense'},{k:'a',t:'math',ph:'Amount',w:100},{k:'c',ph:'Comment'}],def:()=>({dt:iso(new Date()),n:'',d:'',a:'',c:''}),amt:'a'},
@@ -281,19 +281,24 @@ function calc(){mathNotes();logViews();
  const ae=document.activeElement,fid=ae&&ae.dataset&&ae.dataset.f,ss=fid?ae.selectionStart:null,se=fid?ae.selectionEnd:null;
  document.getElementById('cards').innerHTML=`<table><thead><tr><th>Card</th><th>Statement day</th><th>Pay day</th><th>${mon(0)} bill</th><th>${mon(1)} bill</th><th>${mon(2)} bill</th><th class="n">Auto-added (3 months)</th><th class="n">${mon(0)} total</th><th class="n">${mon(1)} total</th><th class="n">${mon(2)} total</th><th>Comment</th></tr></thead><tbody>${rows}</tbody><tfoot><tr><td colspan="7" class="n mute">All cards</td>${tc.map(x=>`<td class="n tot">${money(x)}</td>`).join('')}<td></td></tr></tfoot></table>`;
  if(fid){const e=document.querySelector('[data-f="'+fid+'"]');if(e){e.focus();try{e.setSelectionRange(ss,se)}catch(_){}}}
- // timeline
+// timeline
  S.fixed.filter(f=>f.card==='Bank'&&f.dt&&+f.a).forEach(f=>{const d0=pd(f.dt),nm=(f.d||'Fixed expense')+' (bank)';if(!f.rep){if(d0>=u)ev.push({d:d0,l:nm,a:-(+f.a),t:'out'});return}const end=new Date(u.getFullYear(),u.getMonth()+3,0);for(let k=0;k<60;k++){const y=d0.getFullYear(),m=d0.getMonth()+k,dim=new Date(y,m+1,0).getDate(),d=new Date(y,m,Math.min(d0.getDate(),dim));if(d>end)break;if(d>=u)ev.push({d,l:nm,a:-(+f.a),t:'out'})}});
  S.income.forEach(i=>{const av=xv(i.a)||0;if(i.dt&&av)occ(pd(i.dt),i.rep,u).forEach(d=>ev.push({d,l:i.d||'Income',a:av,t:'in'}))});
  ev.sort((x,y)=>x.d-y.d||y.a-x.a);
  const mk=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'),ml=k=>{const[y,m]=k.split('-').map(Number);return new Date(y,m-1,1).toLocaleDateString('en-GB',{month:'short',year:'numeric'})};
- const months=[...new Set([mk(u),...ev.map(e=>mk(e.d))])].sort();let sel=S.tlMonth||'';if(sel&&!months.includes(sel))sel='';
+ const months=[...new Set([mk(u),...ev.map(e=>mk(e.d))])].sort();const sel=(S.tlMonths||[]).filter(k=>months.includes(k)),has=k=>!sel.length||sel.includes(k),first=sel[0];
  const stRow=`<tr class="st"><td>${fd(u)}</td><td>Starting balance</td><td class="n">—</td><td class="n">${money(adj)}</td></tr>`;
- let b=adj,tr=(!sel||sel===mk(u))?stRow:'',bf=!sel||sel===mk(u);
- ev.forEach(e=>{const before=b;b+=e.a;if(sel&&mk(e.d)!==sel)return;if(!bf){const[y,m]=sel.split('-').map(Number);tr+=`<tr class="st"><td>${fd(new Date(y,m-1,1))}</td><td>Balance brought forward</td><td class="n">—</td><td class="n">${money(before)}</td></tr>`;bf=true}tr+=`<tr><td>${fd(e.d)}</td><td><span class="tag ${e.t}">${e.t==='in'?'Income':'Payment'}</span>${esc(e.l)}</td><td class="n ${e.a<0?'neg':'pos'}">${e.a<0?'−':'+'}${money(Math.abs(e.a))}</td><td class="n ${cls(b)}"><b>${money(b)}</b></td></tr>`});
- const flt=`<div class="tlf"><label class="mute" for="tlMonth">Month</label><select id="tlMonth" aria-label="Filter timeline by month"><option value=""${sel===''?' selected':''}>All months</option>${months.map(k=>`<option value="${k}"${sel===k?' selected':''}>${ml(k)}</option>`).join('')}</select></div>`;
+ let b=adj,tr=has(mk(u))?stRow:'',bf=has(mk(u));
+ ev.forEach(e=>{const before=b;b+=e.a;if(!has(mk(e.d)))return;if(!bf){const[y,m]=mk(e.d).split('-').map(Number);tr+=`<tr class="st"><td>${fd(new Date(y,m-1,1))}</td><td>Balance brought forward</td><td class="n">—</td><td class="n">${money(before)}</td></tr>`;bf=true}tr+=`<tr><td>${fd(e.d)}</td><td><span class="tag ${e.t}">${e.t==='in'?'Income':'Payment'}</span>${esc(e.l)}</td><td class="n ${e.a<0?'neg':'pos'}">${e.a<0?'−':'+'}${money(Math.abs(e.a))}</td><td class="n ${cls(b)}"><b>${money(b)}</b></td></tr>`});
+ const lbl=!sel.length?'All months':sel.length<=2?sel.map(ml).join(', '):sel.length+' months selected';
+ const flt=`<div class="tlf"><span class="mute">Month</span><div class="msel"><button type="button" id="tlBtn" aria-haspopup="true" aria-expanded="${tlOpen}">${lbl} <span aria-hidden="true">▾</span></button><div class="mpan" id="tlPan"${tlOpen?'':' hidden'}><label><input type="checkbox" data-m="" ${!sel.length?'checked':''}> All months</label>${months.map(k=>`<label><input type="checkbox" data-m="${k}" ${sel.includes(k)?'checked':''}> ${ml(k)}</label>`).join('')}</div></div></div>`;
  document.getElementById('timeline').innerHTML=flt+`<table class="tl"><thead><tr><th>Date</th><th>Event</th><th class="n">Amount</th><th class="n">Balance after</th></tr></thead><tbody>${tr}</tbody></table>`}
 // init
-document.getElementById('timeline').addEventListener('change',e=>{if(e.target.id!=='tlMonth')return;S.tlMonth=e.target.value;save();calc();const n=document.getElementById('tlMonth');if(n)n.focus()});
+var tlOpen=false;
+document.getElementById('timeline').addEventListener('click',e=>{if(e.target.closest('#tlBtn')){tlOpen=!tlOpen;const p=document.getElementById('tlPan');p.hidden=!tlOpen;document.getElementById('tlBtn').setAttribute('aria-expanded',tlOpen)}});
+document.getElementById('timeline').addEventListener('change',e=>{const m=e.target.dataset&&e.target.dataset.m;if(m===undefined)return;const cur=new Set(S.tlMonths||[]);if(m==='')cur.clear();else if(e.target.checked)cur.add(m);else cur.delete(m);S.tlMonths=[...cur].sort();save();calc()});
+document.addEventListener('click',e=>{if(tlOpen&&!e.target.closest('.msel')){tlOpen=false;const p=document.getElementById('tlPan');if(p)p.hidden=true}});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&tlOpen){tlOpen=false;const p=document.getElementById('tlPan');if(p)p.hidden=true}});
 const U=document.getElementById('updated');U.value=S.updated;U.oninput=()=>{if(U.value){S.updated=U.value;save();calc()}};
 const UL=document.getElementById('updLock');UL.onclick=()=>{const lock=!U.disabled;U.disabled=lock;UL.textContent=lock?'Edit date':'Lock date';if(!lock)U.focus()};
 const B=document.getElementById('bank');B.value=S.bank;B.oninput=()=>{S.bank=B.value;save();calc()};
