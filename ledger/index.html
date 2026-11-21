@@ -44,10 +44,11 @@ td.n,th.n{text-align:right}
 #t-owedMe td{vertical-align:top}
 .chip.on{background:var(--brass);color:#171b1f}
 .sg{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:6px}.chip{padding:3px 10px;font-size:13px}
+#view-log .p{position:relative}.flt{padding:2px 8px;font-size:12px;margin-left:6px}
 .cw{position:relative;display:inline-block}.cal{position:absolute;z-index:30;top:calc(100% + 6px);left:0;width:268px;background:var(--panel);border:1px solid var(--line);border-top:3px solid var(--brass);border-radius:3px;padding:10px;box-shadow:0 8px 24px rgba(0,0,0,.35)}
 .cn{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}.cn button{padding:3px 10px}.cg{display:grid;grid-template-columns:repeat(7,1fr);gap:3px}.cd{font-size:12px;color:var(--mute);text-align:center;padding:2px 0}
 .dy{padding:6px 0;border:1px solid transparent;color:var(--text);font-weight:500}.dy:hover{background:var(--brass);color:#171b1f}.dy.td{border-color:var(--brass)}.dy.hs{box-shadow:inset 0 -3px 0 var(--brass)}
-.ds{border:1px solid var(--line);border-radius:3px;background:var(--panel2);padding:12px;margin-bottom:12px}.dh{display:flex;gap:10px;align-items:baseline;margin-bottom:8px}
+.ds{border:1px solid var(--line);border-radius:3px;background:var(--panel2);padding:12px;margin-bottom:12px}.dh{display:flex;gap:10px;align-items:center;margin-bottom:8px}.dh .subt{margin-left:auto;padding:3px 10px;font-size:13px}.sub{margin:10px 0}
 #t-log td{vertical-align:top}
 .qe{border:1px solid var(--line);border-radius:3px;background:var(--panel2);padding:12px;margin-bottom:14px}
 .vh{position:absolute;opacity:0;pointer-events:none;width:1px;height:1px}
@@ -115,6 +116,7 @@ button.x{border-color:var(--line);color:var(--mute);padding:5px 9px}button.x:hov
   <div class="ph"><div class="hb"><button type="button" onclick="showView('main')">Back to tracker</button><h2>Expense log: money owed to me</h2></div><span class="tot pos" id="tot-log"></span></div>
   <div class="qd" style="margin-bottom:14px"><span class="cw"><button type="button" id="lgDateBtn" aria-haspopup="dialog" aria-expanded="false">+ Add date</button><div id="lgCal" class="cal" role="dialog" aria-label="Choose a date" hidden></div></span><span class="mute">Pick a date, then enter the name, description and amount for it.</span></div>
   <div class="mute" style="margin-bottom:10px">Enter each expense you paid for someone. Each person’s name and total appear under “People owe me” on the main page. The name “LC” is shown but never added to your bank balance or the totals.</div>
+  <div id="lgFlt" class="cal" role="dialog" aria-label="Filter by name" style="width:230px;max-height:300px;overflow:auto" hidden></div>
   <div id="t-log"></div>
   <div id="logbyname" class="w" style="margin-top:18px"></div>
   <textarea data-note="log" placeholder="Comments on the expense log…"></textarea>
@@ -139,7 +141,7 @@ if(!S){S={updated:iso(new Date()),bank:'',useMe:true,useI:true,income:[],owedMe:
 S.fixed.forEach(f=>{if(!f.dt){const u=pd(S.updated);f.dt=iso(new Date(u.getFullYear(),u.getMonth(),Math.min(+f.day||1,new Date(u.getFullYear(),u.getMonth()+1,0).getDate())))}});
 CARDS.forEach(n=>{const c=S.cards[n];if(c&&c.stmt===undefined)c.stmt=CUT[n]||''});
 const save=()=>{try{localStorage.setItem('ledger-v1',JSON.stringify(S))}catch(e){}};
-if(!S.log)S.log=[];if(!S.logc)S.logc={};
+if(!S.log)S.log=[];if(!S.logSubHide)S.logSubHide={};if(!S.logFilter)S.logFilter=[];if(!S.logc)S.logc={};
 const cardSel={k:'card',t:'select'},cardBankSel={k:'card',t:'select',bank:true};
 const SEC={
  log:{cols:[{k:'n',ph:'Name'},{k:'d',ph:'Description of expense'},{k:'a',t:'math',ph:'Amount',w:100},{k:'c',ph:'Comment'}],def:()=>({dt:iso(new Date()),n:'',d:'',a:'',c:''}),amt:'a'},
@@ -195,11 +197,25 @@ function showView(v){document.querySelector('main').hidden=v==='log';document.ge
 const isLC=n=>String(n||'').trim().toLowerCase()==='lc';
 const lgFmt=d=>d?pd(d).toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short',year:'numeric'}):'No date';
 function drawLog(){const host=document.getElementById('t-log');if(!host)return;const by=new Map();S.log.forEach((r,i)=>{const k=r.dt||'';if(!by.has(k))by.set(k,[]);by.get(k).push(i)});const ds=[...by.keys()].sort();
- host.innerHTML=ds.length?ds.map(d=>{const ix=by.get(d),n=ix.filter(i=>S.log[i].n||S.log[i].a||S.log[i].d).length;return`<div class="ds" data-d="${d}"><div class="dh"><b>${lgFmt(d)}</b><span class="mute">${n} ${n===1?'entry':'entries'}</span></div><div class="w"><table><thead><tr>${HEAD.log.map(h=>`<th>${h}</th>`).join('')}<th></th></tr></thead><tbody>${ix.map(i=>'<tr>'+SEC.log.cols.map(c=>cell('log',i,c,S.log[i])).join('')+`<td><button class="x" onclick="del('log',${i})" aria-label="Remove row">×</button></td></tr>`).join('')}</tbody></table></div><button type="button" onclick="lgAddRow('${d}')">+ Add entry</button></div>`}).join(''):'<div class="mute">No dates yet. Click “Add date” to pick one.</div>'}
+ host.innerHTML=ds.length?(ds.map(d=>{const ix=by.get(d).filter(i=>lgPass(S.log[i])),n=ix.filter(i=>S.log[i].n||S.log[i].a||S.log[i].d).length;if(!ix.length)return'';return`<div class="ds" data-d="${d}"><div class="dh"><b>${lgFmt(d)}</b><span class="mute">${n} ${n===1?'entry':'entries'}</span><button type="button" class="subt" onclick="lgSubToggle('${d}')">Hide subtotal</button></div><div class="w"><table><thead><tr>${HEAD.log.map((h,k)=>k===0?`<th>${h} <button type="button" class="flt" onclick="lgFltOpen('${d}',this,event)" aria-haspopup="dialog">${S.logFilter.length?'Filter ('+S.logFilter.length+')':'Filter'}</button></th>`:`<th>${h}</th>`).join('')}<th></th></tr></thead><tbody>${ix.map(i=>'<tr>'+SEC.log.cols.map(c=>cell('log',i,c,S.log[i])).join('')+`<td><button class="x" onclick="del('log',${i})" aria-label="Remove row">×</button></td></tr>`).join('')}</tbody></table></div><div class="sub"></div><button type="button" onclick="lgAddRow('${d}')">+ Add entry</button></div>`}).join('')||'<div class="mute">No entries for the selected names.</div>'):'<div class="mute">No dates yet. Click “Add date” to pick one.</div>';logSubs();lgFltPos()}
+const lgActive=()=>S.logFilter.length>0;
+const lgPass=r=>{if(!lgActive())return true;const nm=String(r.n||'').trim();if(!nm&&!String(r.a||'').trim()&&!String(r.d||'').trim())return true;return S.logFilter.includes(nm.toLowerCase())};
+let lgFltD='';
+function lgFltRender(){const p=document.getElementById('lgFlt'),gs=logGroups();p.innerHTML=`<div class="cn"><b>Filter by name</b><button type="button" data-clear="1">Clear</button></div>`+(gs.length?gs.map(x=>`<label class="chk"><input type="checkbox" data-k="${esc(x.k)}"${S.logFilter.includes(x.k)?' checked':''}> ${esc(x.n)}${x.lc?' <span class="tag">not in balance</span>':''}</label>`).join(''):'<div class="mute">No names yet.</div>')}
+function lgFltPos(){const p=document.getElementById('lgFlt');if(!p||p.hidden)return;const sec=document.querySelector('#view-log .p'),btn=document.querySelector('#t-log .ds[data-d="'+lgFltD+'"] .flt')||document.querySelector('#t-log .flt');if(!btn){p.hidden=true;return}const a=sec.getBoundingClientRect(),r=btn.getBoundingClientRect();p.style.left=Math.max(0,Math.min(r.left-a.left,a.width-240))+'px';p.style.top=(r.bottom-a.top+6)+'px'}
+function lgFltOpen(d,btn,ev){if(ev)ev.stopPropagation();const p=document.getElementById('lgFlt');if(!p.hidden&&lgFltD===d){p.hidden=true;return}lgFltD=d;lgFltRender();p.hidden=false;lgFltPos()}
+(function(){const p=document.getElementById('lgFlt');
+ const apply=()=>{save();draw('log');calc();lgFltRender();lgFltPos()};
+ p.addEventListener('click',e=>{e.stopPropagation();if(e.target.closest('[data-clear]')){S.logFilter=[];apply()}});
+ p.addEventListener('change',e=>{const c=e.target.closest('input[data-k]');if(!c)return;const k=c.dataset.k;S.logFilter=S.logFilter.filter(x=>x!==k);if(c.checked)S.logFilter.push(k);apply()});
+ document.addEventListener('click',()=>{if(!p.hidden)p.hidden=true});
+ document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!p.hidden)p.hidden=true})})();
+function lgSubToggle(d){if(S.logSubHide[d])delete S.logSubHide[d];else S.logSubHide[d]=true;save();logSubs()}
+function logSubs(){document.querySelectorAll('#t-log .ds').forEach(sec=>{const d=sec.dataset.d,box=sec.querySelector('.sub'),btn=sec.querySelector('.subt'),hide=!!S.logSubHide[d];if(!box||!btn)return;box.hidden=hide;btn.textContent=hide?'Show subtotal':'Hide subtotal';btn.setAttribute('aria-expanded',String(!hide));if(hide)return;const g=new Map();S.log.forEach(r=>{if((r.dt||'')!==d||!lgPass(r))return;const a=xv(r.a)||0,nm=String(r.n||'').trim();if(!a&&!nm)return;const k=nm.toLowerCase(),e=g.get(k)||{n:nm||'(no name)',t:0,lc:isLC(nm)};e.t+=a;g.set(k,e)});const gs=[...g.values()],tot=gs.filter(x=>!x.lc).reduce((t,x)=>t+x.t,0),hasLC=gs.some(x=>x.lc);box.innerHTML=gs.length?`<table class="ls"><thead><tr><th>Subtotal by person</th><th class="n">Amount</th></tr></thead><tbody>${gs.map(x=>`<tr><td>${esc(x.n)}${x.lc?' <span class="tag">not in balance</span>':''}</td><td class="n ${x.lc?'mute':'pos'}">${money(x.t)}</td></tr>`).join('')}<tr><td><b>${hasLC?'Total (without LC)':'Total'}</b></td><td class="n pos"><b>${money(tot)}</b></td></tr></tbody></table>`:'<span class="mute">No entries with a name or amount yet.</span>'})}
 function lgSec(d){return[...document.querySelectorAll('#t-log .ds')].find(x=>x.dataset.d===d)}
-function lgFocusLast(d){const sec=lgSec(d);if(!sec)return;const rows=sec.querySelectorAll('tbody tr'),r=rows[rows.length-1];if(r){r.querySelector('input').focus()}}
+function lgFocusLast(d){const sec=lgSec(d);if(!sec)return;const rows=sec.querySelectorAll('.w tbody tr'),r=rows[rows.length-1];if(r){r.querySelector('input').focus()}}
 function lgAddRow(d){S.log.push({dt:d,n:'',d:'',a:'',c:''});save();draw('log');calc();lgFocusLast(d)}
-function lgPick(v){if(!v)return;const had=S.log.some(r=>r.dt===v);if(!had){S.log.push({dt:v,n:'',d:'',a:'',c:''});save()}draw('log');calc();const sec=lgSec(v);if(sec){sec.scrollIntoView({block:'nearest'});const rows=[...sec.querySelectorAll('tbody tr')];const r=had?rows[rows.length-1]:rows[0];if(r)r.querySelector('input').focus()}}
+function lgPick(v){if(!v)return;const had=S.log.some(r=>r.dt===v);if(!had){S.log.push({dt:v,n:'',d:'',a:'',c:''});save()}draw('log');calc();const sec=lgSec(v);if(sec){sec.scrollIntoView({block:'nearest'});const rows=[...sec.querySelectorAll('.w tbody tr')];const r=had?rows[rows.length-1]:rows[0];if(r)r.querySelector('input').focus()}}
 (function(){const b=document.getElementById('lgDateBtn'),cal=document.getElementById('lgCal');let cy=0,cm=0;
  const MN=['January','February','March','April','May','June','July','August','September','October','November','December'];
  const render=()=>{const has=new Set(S.log.map(r=>r.dt)),today=iso(new Date()),off=(new Date(cy,cm,1).getDay()+6)%7,dim=new Date(cy,cm+1,0).getDate();let h=`<div class="cn"><button type="button" data-nav="-1" aria-label="Previous month">‹</button><b>${MN[cm]} ${cy}</b><button type="button" data-nav="1" aria-label="Next month">›</button></div><div class="cg">`+['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map(x=>`<span class="cd">${x}</span>`).join('');
@@ -212,7 +228,7 @@ function lgPick(v){if(!v)return;const had=S.log.some(r=>r.dt===v);if(!had){S.log
  cal.addEventListener('click',e=>{e.stopPropagation();const n=e.target.closest('[data-nav]'),d=e.target.closest('[data-d]');if(n){cm+=+n.dataset.nav;if(cm<0){cm=11;cy--}else if(cm>11){cm=0;cy++}render();return}if(d){close();lgPick(d.dataset.d)}});
  document.addEventListener('click',()=>{if(!cal.hidden)close()});
  document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!cal.hidden){close();b.focus()}});
- document.getElementById('t-log').addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.matches&&e.target.matches('input[aria-label="Amount"]')){const sec=e.target.closest('.ds'),rows=sec.querySelectorAll('tbody tr');if(e.target.closest('tr')===rows[rows.length-1]){e.preventDefault();lgAddRow(sec.dataset.d)}}})})();
+ document.getElementById('t-log').addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.matches&&e.target.matches('input[aria-label="Amount"]')){const sec=e.target.closest('.ds'),rows=sec.querySelectorAll('.w tbody tr');if(e.target.closest('tr')===rows[rows.length-1]){e.preventDefault();lgAddRow(sec.dataset.d)}}})})();
 const lgIsName=t=>t&&t.matches&&t.matches('#t-log input[aria-label="Name"]');
 function lgClearSug(){document.querySelectorAll('#t-log .sg').forEach(x=>x.remove())}
 let lgSel=-1;
@@ -236,11 +252,11 @@ function lgComment(k,v){S.logc=S.logc||{};if(String(v).trim())S.logc[k]=v;else d
 const lgPending=new WeakMap();
 function lgDel(k,btn){if(lgPending.has(btn)){clearTimeout(lgPending.get(btn));S.log=S.log.filter(r=>lgKey(r)!==k);if(S.logc)delete S.logc[k];lgAfter();return}btn.textContent='Sure?';btn.style.width='auto';btn.title='Click again to delete this person and all their expense log entries';lgPending.set(btn,setTimeout(()=>{lgPending.delete(btn);btn.textContent='×';btn.style.width=''},4000))}
 function logGroups(){const g=new Map();S.log.forEach(r=>{const a=xv(r.a)||0,nm=String(r.n||'').trim()||'(no name)',k=nm.toLowerCase();if(!a&&!String(r.n||'').trim())return;const e=g.get(k)||{n:nm,k:(String(r.n||'').trim()?k:''),t:0,c:0,lc:isLC(nm)};e.t+=a;e.c++;g.set(k,e)});return[...g.values()]}
-function logViews(){const gs=logGroups();const tot=gs.filter(x=>!x.lc).reduce((t,x)=>t+x.t,0),tg=x=>x.lc?' <span class="tag">not in balance</span>':'';
+function logViews(){const gs=logGroups();logSubs();const tot=gs.filter(x=>!x.lc).reduce((t,x)=>t+x.t,0),tg=x=>x.lc?' <span class="tag">not in balance</span>':'';
  document.getElementById('tot-log').textContent=money(tot);
  {const tb=document.querySelector('#t-owedMe tbody');if(tb){const have=tb.querySelectorAll('tr.lg'),sig=JSON.stringify([gs.map(x=>[x.k,x.n,x.t]),S.logc]);if(!(have.length===gs.length&&tb.dataset.sig===sig)){have.forEach(r=>r.remove());tb.dataset.sig=sig;const empty=tb.querySelector('td.mute[colspan]');if(empty)empty.closest('tr').hidden=gs.length>0;
   gs.forEach(x=>{const tr=document.createElement('tr');tr.className='lg';tr.innerHTML=`<td><input value="${esc(x.k===''?'':x.n)}" placeholder="Name" aria-label="Name" onchange="lgRename('${esc(x.k).replace(/'/g,"\\'")}',this.value)"></td><td><input inputmode="decimal" autocomplete="off" value="${x.t.toFixed(2)}" aria-label="Amount" onchange="lgAmount('${esc(x.k).replace(/'/g,"\\'")}',this.value)"></td><td><input value="${esc((S.logc||{})[x.k]||'')}" placeholder="${x.lc?'Not in balance':'Expense log'}" aria-label="Comment" onchange="lgComment('${esc(x.k).replace(/'/g,"\\'")}',this.value)"></td><td><button class="x" type="button" onclick="lgDel('${esc(x.k).replace(/'/g,"\\'")}',this)" aria-label="Remove ${esc(x.n)} and all their expense log entries">×</button></td>`;tb.appendChild(tr)})}}}
- document.getElementById('logbyname').innerHTML=gs.length?`<table class="ls"><thead><tr><th>Name</th><th class="n">Entries</th><th class="n">Total owed</th></tr></thead><tbody>${gs.map(x=>`<tr><td>${esc(x.n)}${tg(x)}</td><td class="n">${x.c}</td><td class="n ${x.lc?'mute':'pos'}"><b>${money(x.t)}</b></td></tr>`).join('')}</tbody></table>`:''}
+ const gv=gs.filter(x=>!lgActive()||S.logFilter.includes(x.k));document.getElementById('logbyname').innerHTML=gv.length?`<h2 style="margin:0 0 6px">Total (all dates)${lgActive()?' – filtered':''}</h2><table class="ls"><thead><tr><th>Name</th><th class="n">Entries</th><th class="n">Total owed</th></tr></thead><tbody>${gv.map(x=>`<tr><td>${esc(x.n)}${tg(x)}</td><td class="n">${x.c}</td><td class="n ${x.lc?'mute':'pos'}"><b>${money(x.t)}</b></td></tr>`).join('')}</tbody></table>`:''}
 function mathNotes(){['income','owedMe','iOwe','log'].forEach(k=>S[k].forEach((r,i)=>{const e=document.getElementById('eq-'+k+'-'+i);if(!e)return;const raw=String(r.a??'').trim(),pl=/^[0-9]*\.?[0-9]*$/.test(raw.replace(/[$,\s]/g,'')),v=xv(raw);e.className='ev '+(isNaN(v)?'neg':'mute');e.textContent=raw===''||pl?'':(isNaN(v)?'Check formula':'= '+money(v))}))}
 function calc(){mathNotes();logViews();
  const lg=sum(S.log.filter(r=>!isLC(r.n)),'a'),me=sum(S.owedMe.filter(r=>!isLC(r.n)),'a')+lg,io=sum(S.iOwe,'a'),bank=xv(S.bank)||0;
