@@ -42,7 +42,7 @@ th{text-align:left;font:500 13px Barlow,sans-serif;color:var(--mute);padding:0 4
 td{padding:3px 3px;vertical-align:middle}
 td.n,th.n{text-align:right}
 #t-owedMe td{vertical-align:top}
-.tlf{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-bottom:10px}.msel{position:relative}.msel>button{padding:7px 12px;min-width:150px;text-align:left}.mpan{position:absolute;z-index:20;top:100%;left:0;margin-top:4px;min-width:180px;max-height:260px;overflow-y:auto;overscroll-behavior:contain;background:var(--panel);color:var(--text);border:1px solid var(--brass);border-radius:3px;padding:4px;box-shadow:0 6px 18px rgba(0,0,0,.4)}.mpan label{display:flex;flex-direction:row;gap:8px;align-items:center;justify-content:flex-start;padding:6px 8px;cursor:pointer;white-space:nowrap;color:var(--text);font-size:14px}.mpan label:hover{background:var(--panel2)}.mpan input{width:auto;flex:none;margin:0;padding:0;accent-color:var(--brass)}.mpan[hidden]{display:none}.mpan label.yr{font-weight:600;border-top:1px solid var(--line);margin-top:2px}.mpan label.mo{padding-left:22px}
+.ccadd{margin-top:10px;display:flex;flex-wrap:wrap;gap:8px;align-items:center}.ccadd input{width:200px}.ccadd [hidden]{display:none}.tlf{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-bottom:10px}.msel{position:relative}.msel>button{padding:7px 12px;min-width:150px;text-align:left}.mpan{position:absolute;z-index:20;top:100%;left:0;margin-top:4px;min-width:180px;max-height:260px;overflow-y:auto;overscroll-behavior:contain;background:var(--panel);color:var(--text);border:1px solid var(--brass);border-radius:3px;padding:4px;box-shadow:0 6px 18px rgba(0,0,0,.4)}.mpan label{display:flex;flex-direction:row;gap:8px;align-items:center;justify-content:flex-start;padding:6px 8px;cursor:pointer;white-space:nowrap;color:var(--text);font-size:14px}.mpan label:hover{background:var(--panel2)}.mpan input{width:auto;flex:none;margin:0;padding:0;accent-color:var(--brass)}.mpan[hidden]{display:none}.mpan label.yr{font-weight:600;border-top:1px solid var(--line);margin-top:2px}.mpan label.mo{padding-left:22px}
 .chip.on{background:var(--brass);color:#171b1f}
 .sg{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:6px}.chip{padding:3px 10px;font-size:13px}
 #view-log .p{position:relative}.flt{padding:2px 8px;font-size:12px;margin-left:6px}
@@ -100,6 +100,9 @@ button.x{border-color:var(--line);color:var(--mute);padding:5px 9px}button.x:hov
 
  <section class="p s12"><div class="ph"><h2>Credit card bills</h2><span class="mute">Enter bills already posted. Fixed expenses and loans are added automatically.</span></div>
   <div class="w" id="cards"></div>
+  <div class="ccadd"><button type="button" id="ccAddBtn" onclick="ccAddOpen(true)">+ Add card</button>
+   <span id="ccForm" hidden><input id="ccName" type="text" maxlength="20" autocomplete="off" placeholder="Card name, e.g. OCBC" aria-label="New card name" onkeydown="if(event.key==='Enter'){event.preventDefault();ccAdd()}else if(event.key==='Escape'){ccAddOpen(false)}"> <button type="button" onclick="ccAdd()">Add</button> <button type="button" onclick="ccAddOpen(false)">Cancel</button></span>
+   <span id="ccErr" class="neg" role="status"></span></div>
   <textarea data-note="cards" placeholder="Comments on cards…"></textarea></section>
 
  <section class="p s6"><div class="ph"><h2>Loans</h2><span class="tot" id="tot-loans"></span></div>
@@ -125,6 +128,7 @@ button.x{border-color:var(--line);color:var(--mute);padding:5px 9px}button.x:hov
 </div>
 <script>
 const CARDS=['HSBC','Citibank','UOB','DBS'];
+const DEFC=['HSBC','Citibank','UOB','DBS'];
 const CUT={HSBC:5,Citibank:5,DBS:12};
 const pd=s=>{const[y,m,d]=s.split('-').map(Number);return new Date(y,m-1,d)};
 const iso=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
@@ -141,6 +145,7 @@ let S=null;try{S=JSON.parse(localStorage.getItem('ledger-v1'))}catch(e){}
 if(!S){S={updated:iso(new Date()),bank:'',useMe:true,useI:true,income:[],owedMe:[],iOwe:[],log:[],loans:[],fixed:[],notes:{},
  cards:Object.fromEntries(CARDS.map((c,i)=>[c,{day:[15,20,25,28][i],cur:'',next:'',c:''}]))}}
 S.fixed.forEach(f=>{if(!f.dt){const u=pd(S.updated);f.dt=iso(new Date(u.getFullYear(),u.getMonth(),Math.min(+f.day||1,new Date(u.getFullYear(),u.getMonth()+1,0).getDate())))}});
+Object.keys(S.cards).forEach(n=>{if(!CARDS.includes(n))CARDS.push(n)});
 CARDS.forEach(n=>{const c=S.cards[n];if(c&&c.stmt===undefined)c.stmt=CUT[n]||''});
 const save=()=>{try{localStorage.setItem('ledger-v1',JSON.stringify(S))}catch(e){}};
 if(!S.log)S.log=[];if(!S.logSubHide)S.logSubHide={};if(!S.logFilter)S.logFilter=[];if(!Array.isArray(S.tlMonths))S.tlMonths=S.tlMonth?[S.tlMonth]:[];if(!S.logc)S.logc={};
@@ -182,6 +187,9 @@ document.addEventListener('input',e=>{if(e.target.matches&&e.target.matches('inp
 function add(k){const r=SEC[k].def();S[k].push(r);save();draw(k);calc();if(k==='fixed'||k==='income'){const tr=document.querySelectorAll('#t-'+k+' tbody tr')[S[k].indexOf(r)];const el=tr&&tr.querySelector('input,textarea');if(el){el.focus();tr.scrollIntoView({block:'nearest'})}}}
 document.addEventListener('focusout',e=>{if(!pendSort.size)return;const t=e.target.closest&&e.target.closest('#t-fixed,#t-income');if(!t)return;const k=t.id.slice(2);if(!pendSort.has(k))return;const rt=e.relatedTarget,tr=rt&&rt.closest?rt.closest('tr'):null;let obj=null,ci=-1;if(tr&&t.contains(tr)){obj=S[k][[...t.querySelectorAll('tbody tr')].indexOf(tr)];ci=[...tr.querySelectorAll('input,select,textarea')].indexOf(rt)}pendSort.delete(k);draw(k);calc();if(obj){const ni=S[k].indexOf(obj),ntr=t.querySelectorAll('tbody tr')[ni],el=ntr&&ntr.querySelectorAll('input,select,textarea')[ci];if(el)el.focus()}});
 function del(k,i){S[k].splice(i,1);save();draw(k);calc()}
+function ccAddOpen(o){document.getElementById('ccForm').hidden=!o;document.getElementById('ccAddBtn').hidden=o;document.getElementById('ccErr').textContent='';if(o){const i=document.getElementById('ccName');i.value='';i.focus()}}
+function ccAdd(){const i=document.getElementById('ccName'),n=i.value.trim().replace(/\s+/g,' '),er=document.getElementById('ccErr');if(!n){er.textContent='Enter a card name.';return}if(!/^[A-Za-z0-9 \-]{1,20}$/.test(n)){er.textContent='Use letters, numbers, spaces or hyphens (max 20).';return}if(n.toLowerCase()==='bank'||CARDS.some(x=>x.toLowerCase()===n.toLowerCase())){er.textContent='That name is already used.';return}S.cards[n]={day:'',stmt:'',cur:'',next:'',next2:'',c:''};CARDS.push(n);save();ccAddOpen(false);draw('fixed');calc()}
+function ccDel(n){const er=document.getElementById('ccErr'),c=S.cards[n];if(S.fixed.some(f=>f.card===n)){er.textContent=n+' is used by a fixed expense. Change those rows first.';return}if(c&&[c.cur,c.next,c.next2,c.c].some(v=>String(v||'').trim())){er.textContent='Clear '+n+'\u2019s bills and comment first.';return}delete S.cards[n];CARDS.splice(CARDS.indexOf(n),1);er.textContent='';save();draw('fixed');calc()}
 function upCard(n,f,v){S.cards[n][f]=v;save();calc()}
 function cdate(day,off){const u=pd(S.updated),y=u.getFullYear(),m=u.getMonth()+off,dim=new Date(y,m+1,0).getDate();return new Date(y,m,Math.min(+day||1,dim))}
 const fday=f=>f.dt?pd(f.dt).getDate():0;
@@ -281,7 +289,7 @@ function calc(){mathNotes();logViews();
  let rows='';
  const ev=[];const u=pd(S.updated);
  CARDS.forEach(n=>{const c=S.cards[n],t=cardTotals(n);
-  rows+=`<tr><td><b>${n}</b></td><td><input type="number" min="1" max="31" style="width:64px" placeholder="—" value="${esc(c.stmt)}" data-f="${n}.stmt" oninput="upCard('${n}','stmt',this.value)" aria-label="${n} statement day"></td><td><input type="number" style="width:64px" value="${esc(c.day)}" data-f="${n}.day" oninput="upCard('${n}','day',this.value)" aria-label="${n} payment day"></td>
+  rows+=`<tr><td><b>${esc(n)}</b>${DEFC.includes(n)?'':` <button class="x" type="button" onclick="ccDel('${n}')" aria-label="Remove ${esc(n)} card">×</button>`}</td><td><input type="number" min="1" max="31" style="width:64px" placeholder="—" value="${esc(c.stmt)}" data-f="${n}.stmt" oninput="upCard('${n}','stmt',this.value)" aria-label="${n} statement day"></td><td><input type="number" style="width:64px" value="${esc(c.day)}" data-f="${n}.day" oninput="upCard('${n}','day',this.value)" aria-label="${n} payment day"></td>
   <td>${bi(n,c,'cur','current')}</td><td>${bi(n,c,'next','next')}</td><td>${bi(n,c,'next2','third month')}</td>
   <td class="n mute">${t.ac.slice(0,3).map(money).join(' / ')}</td>${t.tot.slice(0,3).map(x=>`<td class="n"><b>${money(x)}</b></td>`).join('')}
   <td><input placeholder="Comment" value="${esc(c.c)}" data-f="${n}.c" oninput="upCard('${n}','c',this.value)" aria-label="${n} comment"></td></tr>`;
