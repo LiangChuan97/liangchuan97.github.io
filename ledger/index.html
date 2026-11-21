@@ -294,7 +294,7 @@ function calc(){mathNotes();logViews();
  ev.forEach(e=>{const before=b;b+=e.a;if(!has(mk(e.d)))return;if(!bf){const[y,m]=mk(e.d).split('-').map(Number);tr+=`<tr class="st"><td>${fd(new Date(y,m-1,1))}</td><td>Balance brought forward</td><td class="n">—</td><td class="n">${money(before)}</td></tr>`;bf=true}tr+=`<tr><td>${fd(e.d)}</td><td><span class="tag ${e.t}">${e.t==='in'?'Income':'Payment'}</span>${esc(e.l)}</td><td class="n ${e.a<0?'neg':'pos'}">${e.a<0?'−':'+'}${money(Math.abs(e.a))}</td><td class="n ${cls(b)}"><b>${money(b)}</b></td></tr>`});
  const dd=(id,title,all,opts,sel,lab)=>{const l=!sel.length?all:sel.length<=2?sel.map(lab).join(', '):sel.length+' selected';return`<span class="mute">${title}</span><div class="msel"><button type="button" data-tb="${id}" aria-haspopup="true" aria-expanded="${tlOpen===id}">${l} <span aria-hidden="true">▾</span></button><div class="mpan" data-tp="${id}"${tlOpen===id?'':' hidden'}><label><input type="checkbox" data-t="${id}" data-v="" ${!sel.length?'checked':''}> ${all}</label>${opts.map(v=>`<label><input type="checkbox" data-t="${id}" data-v="${v}" ${sel.includes(v)?'checked':''}> ${lab(v)}</label>`).join('')}</div></div>`};
  const MN=m=>new Date(2000,+m-1,1).toLocaleDateString('en-GB',{month:'long'});
- document.getElementById('tl-flt').innerHTML=dd('y','Year','All years',yrs,ysel,y=>y)+dd('m','Month','All months',mns,msel,MN);
+ document.getElementById('tl-flt').innerHTML=dd('m','Month','All months',mns,msel,MN)+dd('y','Year','All years',yrs,ysel,y=>y);
  document.getElementById('timeline').innerHTML=`<table class="tl"><thead><tr><th>Date</th><th>Event</th><th class="n">Amount</th><th class="n">Balance after</th></tr></thead><tbody>${tr}</tbody></table>`}
 // init
 var tlOpen='';
