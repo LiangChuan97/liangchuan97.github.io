@@ -195,7 +195,7 @@ const mon=off=>{const u=pd(S.updated);return new Date(u.getFullYear(),u.getMonth
 const cls=n=>n<0?'neg':'';
 const ymi=d=>d.getFullYear()*12+d.getMonth();
 const tlYrs=()=>[...new Set((String(S.tlYearTxt||'').match(/\b\d{4}\b/g)||[]).map(Number))].sort();
-function horizon(){const ux=ymi(pd(S.updated));let m=3;const up=(dt,sh)=>{if(!dt)return;const i=ymi(pd(dt))-ux+1+sh;if(i>m)m=i};S.fixed.forEach(f=>{const c=S.cards[f.card];up(f.dt,c&&f.dt&&pd(f.dt).getDate()>(+c.stmt||31)?1:0)});tlYrs().forEach(y=>{const i=y*12+11-ux+1;if(i>m)m=i});return Math.min(m,72)}
+function horizon(){const ux=ymi(pd(S.updated));let m=3;const up=(dt,sh)=>{if(!dt)return;const i=ymi(pd(dt))-ux+1+sh;if(i>m)m=i};S.fixed.forEach(f=>{const c=S.cards[f.card];up(f.dt,c&&f.dt&&pd(f.dt).getDate()>(+c.stmt||31)?1:0)});tlYrs().forEach(y=>{const i=y*12+11-ux+1;if(i>m)m=i});const uu=pd(S.updated);(S.tlMon||[]).forEach(k=>{const mo=+k-1,i=(uu.getFullYear()+(mo<uu.getMonth()?1:0))*12+mo-ux+1;if(i>m)m=i});return Math.min(m,72)}
 function occ(d0,rep,u){if(!rep)return d0>=u?[d0]:[];const out=[],end=new Date(u.getFullYear(),u.getMonth()+horizon(),0);for(let k=0;k<60;k++){const y=d0.getFullYear(),m=d0.getMonth()+k,dim=new Date(y,m+1,0).getDate(),d=new Date(y,m,Math.min(d0.getDate(),dim));if(d>end)break;if(d>=u)out.push(d)}return out}
 function showView(v){document.querySelector('main').hidden=v==='log';document.getElementById('view-log').hidden=v!=='log';window.scrollTo(0,0)}
 const isLC=n=>String(n||'').trim().toLowerCase()==='lc';
@@ -289,7 +289,7 @@ function calc(){mathNotes();logViews();
  S.income.forEach(i=>{const av=xv(i.a)||0;if(i.dt&&av)occ(pd(i.dt),i.rep,u).forEach(d=>ev.push({d,l:i.d||'Income',a:av,t:'in'}))});
  ev.sort((x,y)=>x.d-y.d||y.a-x.a);
  const mk=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'),ml=k=>{const[y,m]=k.split('-').map(Number);return new Date(y,m-1,1).toLocaleDateString('en-GB',{month:'short',year:'numeric'})};
- const months=[...new Set([...Array.from({length:horizon()},(_,o)=>mk(new Date(u.getFullYear(),u.getMonth()+o,1))),...ev.map(e=>mk(e.d))])].sort();const yrs=[...new Set(months.map(k=>k.slice(0,4)))],mns=[...new Set(months.map(k=>k.slice(5)))].sort(),ysel=tlYrs().map(String),msel=(S.tlMon||[]).filter(m=>mns.includes(m)),has=k=>(!ysel.length||ysel.includes(k.slice(0,4)))&&(!msel.length||msel.includes(k.slice(5)));
+ const months=[...new Set([...Array.from({length:horizon()},(_,o)=>mk(new Date(u.getFullYear(),u.getMonth()+o,1))),...ev.map(e=>mk(e.d))])].sort();const yrs=[...new Set(months.map(k=>k.slice(0,4)))],mns=['01','02','03','04','05','06','07','08','09','10','11','12'],ysel=tlYrs().map(String),msel=(S.tlMon||[]).filter(m=>mns.includes(m)),has=k=>(!ysel.length||ysel.includes(k.slice(0,4)))&&(!msel.length||msel.includes(k.slice(5)));
  const stRow=`<tr class="st"><td>${fd(u)}</td><td>Starting balance</td><td class="n">—</td><td class="n">${money(adj)}</td></tr>`;
  let b=adj,tr=has(mk(u))?stRow:'',bf=has(mk(u));
  ev.forEach(e=>{const before=b;b+=e.a;if(!has(mk(e.d)))return;if(!bf){const[y,m]=mk(e.d).split('-').map(Number);tr+=`<tr class="st"><td>${fd(new Date(y,m-1,1))}</td><td>Balance brought forward</td><td class="n">—</td><td class="n">${money(before)}</td></tr>`;bf=true}tr+=`<tr><td>${fd(e.d)}</td><td><span class="tag ${e.t}">${e.t==='in'?'Income':'Payment'}</span>${esc(e.l)}</td><td class="n ${e.a<0?'neg':'pos'}">${e.a<0?'−':'+'}${money(Math.abs(e.a))}</td><td class="n ${cls(b)}"><b>${money(b)}</b></td></tr>`});
