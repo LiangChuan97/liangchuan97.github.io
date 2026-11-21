@@ -95,7 +95,7 @@ button.x{border-color:var(--line);color:var(--mute);padding:5px 9px}button.x:hov
   <textarea class="auto" data-note="owe" placeholder="Comments on debts…"></textarea></section>
 
  <section class="p s12"><div class="ph"><h2>Balance timeline</h2><span class="mute">Starts from the adjusted balance. Income adds, card payments deduct, by date.</span></div>
-  <div class="tlf" id="tl-flt"></div><div class="w" id="timeline"></div>
+  <div class="tlf"><div id="tl-flt" style="display:contents"></div><span class="mute">Year</span><input id="tlYear" type="text" inputmode="numeric" autocomplete="off" placeholder="e.g. 2027, 2028" aria-label="Filter timeline by year (type one or more years)" style="width:170px"></div><div class="w" id="timeline"></div>
   <textarea data-note="timeline" placeholder="Comments on timeline…"></textarea></section>
 
  <section class="p s12"><div class="ph"><h2>Credit card bills</h2><span class="mute">Enter bills already posted. Fixed expenses and loans are added automatically.</span></div>
@@ -194,7 +194,8 @@ function cardTotals(n){
 const mon=off=>{const u=pd(S.updated);return new Date(u.getFullYear(),u.getMonth()+off,1).toLocaleDateString('en-GB',{month:'long'})};
 const cls=n=>n<0?'neg':'';
 const ymi=d=>d.getFullYear()*12+d.getMonth();
-function horizon(){const ux=ymi(pd(S.updated));let m=3;const up=(dt,sh)=>{if(!dt)return;const i=ymi(pd(dt))-ux+1+sh;if(i>m)m=i};S.fixed.forEach(f=>{const c=S.cards[f.card];up(f.dt,c&&f.dt&&pd(f.dt).getDate()>(+c.stmt||31)?1:0)});return Math.min(m,36)}
+const tlYrs=()=>[...new Set((String(S.tlYearTxt||'').match(/\b\d{4}\b/g)||[]).map(Number))].sort();
+function horizon(){const ux=ymi(pd(S.updated));let m=3;const up=(dt,sh)=>{if(!dt)return;const i=ymi(pd(dt))-ux+1+sh;if(i>m)m=i};S.fixed.forEach(f=>{const c=S.cards[f.card];up(f.dt,c&&f.dt&&pd(f.dt).getDate()>(+c.stmt||31)?1:0)});tlYrs().forEach(y=>{const i=y*12+11-ux+1;if(i>m)m=i});return Math.min(m,72)}
 function occ(d0,rep,u){if(!rep)return d0>=u?[d0]:[];const out=[],end=new Date(u.getFullYear(),u.getMonth()+horizon(),0);for(let k=0;k<60;k++){const y=d0.getFullYear(),m=d0.getMonth()+k,dim=new Date(y,m+1,0).getDate(),d=new Date(y,m,Math.min(d0.getDate(),dim));if(d>end)break;if(d>=u)out.push(d)}return out}
 function showView(v){document.querySelector('main').hidden=v==='log';document.getElementById('view-log').hidden=v!=='log';window.scrollTo(0,0)}
 const isLC=n=>String(n||'').trim().toLowerCase()==='lc';
@@ -288,16 +289,18 @@ function calc(){mathNotes();logViews();
  S.income.forEach(i=>{const av=xv(i.a)||0;if(i.dt&&av)occ(pd(i.dt),i.rep,u).forEach(d=>ev.push({d,l:i.d||'Income',a:av,t:'in'}))});
  ev.sort((x,y)=>x.d-y.d||y.a-x.a);
  const mk=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'),ml=k=>{const[y,m]=k.split('-').map(Number);return new Date(y,m-1,1).toLocaleDateString('en-GB',{month:'short',year:'numeric'})};
- const months=[...new Set([...Array.from({length:horizon()},(_,o)=>mk(new Date(u.getFullYear(),u.getMonth()+o,1))),...ev.map(e=>mk(e.d))])].sort();const yrs=[...new Set(months.map(k=>k.slice(0,4)))],mns=[...new Set(months.map(k=>k.slice(5)))].sort(),ysel=(S.tlYears||[]).filter(y=>yrs.includes(y)),msel=(S.tlMon||[]).filter(m=>mns.includes(m)),has=k=>(!ysel.length||ysel.includes(k.slice(0,4)))&&(!msel.length||msel.includes(k.slice(5)));
+ const months=[...new Set([...Array.from({length:horizon()},(_,o)=>mk(new Date(u.getFullYear(),u.getMonth()+o,1))),...ev.map(e=>mk(e.d))])].sort();const yrs=[...new Set(months.map(k=>k.slice(0,4)))],mns=[...new Set(months.map(k=>k.slice(5)))].sort(),ysel=tlYrs().map(String),msel=(S.tlMon||[]).filter(m=>mns.includes(m)),has=k=>(!ysel.length||ysel.includes(k.slice(0,4)))&&(!msel.length||msel.includes(k.slice(5)));
  const stRow=`<tr class="st"><td>${fd(u)}</td><td>Starting balance</td><td class="n">—</td><td class="n">${money(adj)}</td></tr>`;
  let b=adj,tr=has(mk(u))?stRow:'',bf=has(mk(u));
  ev.forEach(e=>{const before=b;b+=e.a;if(!has(mk(e.d)))return;if(!bf){const[y,m]=mk(e.d).split('-').map(Number);tr+=`<tr class="st"><td>${fd(new Date(y,m-1,1))}</td><td>Balance brought forward</td><td class="n">—</td><td class="n">${money(before)}</td></tr>`;bf=true}tr+=`<tr><td>${fd(e.d)}</td><td><span class="tag ${e.t}">${e.t==='in'?'Income':'Payment'}</span>${esc(e.l)}</td><td class="n ${e.a<0?'neg':'pos'}">${e.a<0?'−':'+'}${money(Math.abs(e.a))}</td><td class="n ${cls(b)}"><b>${money(b)}</b></td></tr>`});
  const dd=(id,title,all,opts,sel,lab)=>{const l=!sel.length?all:sel.length<=2?sel.map(lab).join(', '):sel.length+' selected';return`<span class="mute">${title}</span><div class="msel"><button type="button" data-tb="${id}" aria-haspopup="true" aria-expanded="${tlOpen===id}">${l} <span aria-hidden="true">▾</span></button><div class="mpan" data-tp="${id}"${tlOpen===id?'':' hidden'}><label><input type="checkbox" data-t="${id}" data-v="" ${!sel.length?'checked':''}> ${all}</label>${opts.map(v=>`<label><input type="checkbox" data-t="${id}" data-v="${v}" ${sel.includes(v)?'checked':''}> ${lab(v)}</label>`).join('')}</div></div>`};
+ {const yi=document.getElementById('tlYear');if(yi&&document.activeElement!==yi)yi.value=S.tlYearTxt||''}
  const MN=m=>new Date(2000,+m-1,1).toLocaleDateString('en-GB',{month:'long'});
- document.getElementById('tl-flt').innerHTML=dd('m','Month','All months',mns,msel,MN)+dd('y','Year','All years',yrs,ysel,y=>y);
+ document.getElementById('tl-flt').innerHTML=dd('m','Month','All months',mns,msel,MN);
  document.getElementById('timeline').innerHTML=`<table class="tl"><thead><tr><th>Date</th><th>Event</th><th class="n">Amount</th><th class="n">Balance after</th></tr></thead><tbody>${tr}</tbody></table>`}
 // init
 var tlOpen='';
+document.getElementById('tlYear').addEventListener('input',e=>{S.tlYearTxt=e.target.value;save();calc()});
 const tlSync=()=>{document.querySelectorAll('#tl-flt [data-tp]').forEach(p=>p.hidden=p.dataset.tp!==tlOpen);document.querySelectorAll('#tl-flt [data-tb]').forEach(b=>b.setAttribute('aria-expanded',b.dataset.tb===tlOpen))};
 document.getElementById('tl-flt').addEventListener('click',e=>{const b=e.target.closest('[data-tb]');if(b){tlOpen=tlOpen===b.dataset.tb?'':b.dataset.tb;tlSync()}});
 document.getElementById('tl-flt').addEventListener('change',e=>{const t=e.target,id=t.dataset.t;if(!id)return;const key=id==='y'?'tlYears':'tlMon',cur=new Set(S[key]||[]);if(t.dataset.v==='')cur.clear();else t.checked?cur.add(t.dataset.v):cur.delete(t.dataset.v);S[key]=[...cur].sort();save();const p0=document.querySelector('[data-tp="'+id+'"]'),sc=p0?p0.scrollTop:0;calc();const p1=document.querySelector('[data-tp="'+id+'"]');if(p1)p1.scrollTop=sc});
