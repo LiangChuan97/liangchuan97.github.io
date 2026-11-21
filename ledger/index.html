@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>The Ledger – Savings & Expenses</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Oswald:wght@500;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#171b1f;--panel:#222a31;--panel2:#1c2228;--line:#37424c;--text:#e6e2d8;--mute:#8d98a3;--brass:#c8a24a;--good:#86a96a;--bad:#c4573c;--inp:#161b20;
+color-scheme:dark;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media(prefers-color-scheme:light){:root:not([data-theme="dark"]){--bg:#d9d5cb;--panel:#eceae3;--panel2:#e2dfd6;--line:#a9a79d;--text:#20262b;--mute:#5d6770;--brass:#8a6a1c;--good:#48702c;--bad:#a63a22;--inp:#f6f4ee;color-scheme:light}}
+*{box-sizing:border-box}html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--text);font:400 15px/1.4 Barlow,"Segoe UI",Arial,sans-serif;
+background-image:repeating-linear-gradient(135deg,transparent 0 14px,rgba(255,255,255,.015) 14px 15px)}
+header{display:grid;grid-template-columns:1fr auto 1fr;gap:16px;align-items:end;padding:22px 24px 16px;border-bottom:4px solid var(--brass);background:var(--panel2)}
+h1{margin:0;font:600 34px/1 Oswald,Impact,"Arial Narrow",sans-serif;letter-spacing:.06em}
+h1 small{display:block;font:500 13px Barlow,sans-serif;letter-spacing:.04em;color:var(--mute);margin-top:6px}
+h2{margin:0;font:600 19px/1.1 Oswald,Impact,"Arial Narrow",sans-serif;letter-spacing:.05em}
+label.d{display:flex;flex-direction:column;gap:4px;color:var(--mute);font-size:13px}
+.upd{display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center}.upd label.d{align-items:center}.upd input{width:auto;text-align:center}input:disabled{opacity:.8;cursor:not-allowed}
+@media(max-width:720px){header{grid-template-columns:1fr;justify-items:center;text-align:center}}
+main{display:grid;grid-template-columns:repeat(12,1fr);gap:16px;padding:16px 24px 40px;max-width:1500px;margin:auto}
+.p{background:var(--panel);border:1px solid var(--line);border-top:3px solid var(--brass);border-radius:3px;padding:14px;min-width:0}
+.ph{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:10px}
+.tot{font:600 17px Oswald,sans-serif;color:var(--brass)}
+.s3{grid-column:span 3}.s4{grid-column:span 4}.s5{grid-column:span 5}.s6{grid-column:span 6}.s12{grid-column:span 12}
+@media(max-width:1100px){.s3,.s4,.s5{grid-column:span 6}}
+@media(max-width:720px){main{padding:12px}header{padding:16px 12px}.p{grid-column:span 12!important}}
+input,select,textarea{background:var(--inp);color:var(--text);border:1px solid var(--line);border-radius:2px;padding:7px 8px;font:inherit;width:100%;min-width:0}
+input:focus,select:focus,textarea:focus,button:focus-visible{outline:2px solid var(--brass);outline-offset:1px}
+textarea{resize:vertical;min-height:44px;margin-top:10px;font-size:14px}
+.w{overflow-x:auto}
+.ev{font-size:12px;margin-top:2px}
+.dd{min-width:140px}.dd summary{cursor:pointer;background:var(--inp);border:1px solid var(--line);border-radius:2px;padding:7px 8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px}.dd[open] summary{border-color:var(--brass)}.ddl{max-height:190px;overflow:auto;border:1px solid var(--line);border-top:0;background:var(--panel2);padding:4px 10px}.ddl .chk{margin:5px 0}
+table{width:100%;border-collapse:collapse}
+th{text-align:left;font:500 13px Barlow,sans-serif;color:var(--mute);padding:0 4px 6px;white-space:nowrap}
+td{padding:3px 3px;vertical-align:middle}
+td.n,th.n{text-align:right}
+.tl td{padding:7px 8px;border-top:1px solid var(--line)}
+.tl tr.st td{color:var(--mute)}
+button{cursor:pointer;font:600 14px Barlow,sans-serif;border-radius:2px;border:1px solid var(--brass);background:transparent;color:var(--brass);padding:6px 12px}
+button:hover{background:var(--brass);color:#171b1f}
+button.x{border-color:var(--line);color:var(--mute);padding:5px 9px}button.x:hover{background:var(--bad);border-color:var(--bad);color:#fff}
+.big{font:600 40px/1 Oswald,Impact,sans-serif;color:var(--brass);margin:6px 0 2px;overflow-wrap:anywhere}
+.mute{color:var(--mute);font-size:13px}.pos{color:var(--good)}.neg{color:var(--bad)}
+.chk{display:flex;gap:8px;align-items:center;margin:8px 0;font-size:14px}.chk input{width:auto}
+.calc{border-top:1px solid var(--line);margin-top:10px;padding-top:8px}
+.calc div{display:flex;justify-content:space-between;padding:2px 0}
+.tag{font-size:12px;padding:1px 6px;border-radius:2px;border:1px solid var(--line);color:var(--mute);margin-right:6px}
+.tag.in{color:var(--good);border-color:var(--good)}.tag.out{color:var(--bad);border-color:var(--bad)}
+</style></head><body>
+<header>
+ <h1>THE LEDGER<small>Savings, debts and bills in one place</small></h1>
+ <div class="upd"><label class="d">Last updated<input type="date" id="updated" aria-label="Last updated date" disabled></label><button id="updLock" type="button">Edit date</button></div>
+</header>
+<main>
+ <section class="p s3"><div class="ph"><h2>Bank balance</h2></div>
+  <label class="d">Balance in account today<input type="number" step="0.01" id="bank" placeholder="0.00"></label>
+  <label class="chk"><input type="checkbox" id="useMe"> Add what people owe me</label>
+  <label class="chk"><input type="checkbox" id="useI"> Deduct what I owe people</label>
+  <div class="calc"><div><span>Bank</span><span id="c-bank"></span></div><div><span>+ Owed to me</span><span id="c-me"></span></div><div><span>− I owe</span><span id="c-io"></span></div></div>
+  <div class="mute" style="margin-top:10px">Adjusted balance</div><div class="big" id="adj"></div>
+  <textarea data-note="bank" placeholder="Comments on balance…"></textarea></section>
+
+ <section class="p s5"><div class="ph"><h2>Possible income</h2><span class="tot" id="tot-income"></span></div>
+  <div class="w" id="t-income"></div><button onclick="add('income')">+ Add income</button>
+  <div class="mute" style="margin-top:8px">Tick “Repeats monthly” for income that arrives every month on that day. It shows in the balance timeline for about three months ahead.</div>
+  <textarea data-note="income" placeholder="Comments on income…"></textarea></section>
+
+ <section class="p s4"><div class="ph"><h2>People owe me</h2><span class="tot pos" id="tot-owedMe"></span></div>
+  <div class="w" id="t-owedMe"></div><button onclick="add('owedMe')">+ Add person</button>
+  <div class="ph" style="margin-top:20px"><h2>I owe people</h2><span class="tot neg" id="tot-iOwe"></span></div>
+  <div class="w" id="t-iOwe"></div><button onclick="add('iOwe')">+ Add person</button>
+  <textarea data-note="owe" placeholder="Comments on debts…"></textarea></section>
+
+ <section class="p s12"><div class="ph"><h2>Balance timeline</h2><span class="mute">Starts from the adjusted balance. Income adds, card payments deduct, by date.</span></div>
+  <div class="w" id="timeline"></div>
+  <textarea data-note="timeline" placeholder="Comments on timeline…"></textarea></section>
+
+ <section class="p s12"><div class="ph"><h2>Credit card bills</h2><span class="mute">Enter bills already posted. Fixed expenses and loans are added automatically.</span></div>
+  <div class="w" id="cards"></div>
+  <textarea data-note="cards" placeholder="Comments on cards…"></textarea></section>
+
+ <section class="p s6"><div class="ph"><h2>Loans</h2><span class="tot" id="tot-loans"></span></div>
+  <div class="w" id="t-loans"></div><button onclick="add('loans')">+ Add loan</button>
+  <div class="mute" style="margin-top:8px">Enter what you still owe and the monthly payment. Each ticked month takes one monthly payment off the amount in “After payments”. Ticks are a record only: nothing is added to your card bills.</div>
+  <textarea data-note="loans" placeholder="Comments on loans…"></textarea></section>
+
+ <section class="p s6"><div class="ph"><h2>Fixed monthly expenses</h2><span class="tot" id="tot-fixed"></span></div>
+  <div class="w" id="t-fixed"></div><button onclick="add('fixed')">+ Add expense</button>
+  <div class="mute" style="margin-top:8px">Each row is one charge on its bill date and lands in that month’s card bill. Tick “Repeats monthly” for a charge that recurs every month from that date. Statement day is set per card in the credit card table. A bill date after a card’s statement day goes into the next month’s bill (for example, HSBC statement day 5: 6 Oct to 5 Nov is the November statement). Leave it blank for no cut-off. Choose Bank for a charge paid straight from your bank account: it is deducted on its bill date in the balance timeline and is not added to any card bill. The total at the top is the amount still to be billed: expenses dated after your last-updated date, each counted once.</div>
+  <textarea data-note="fixed" placeholder="Comments on fixed expenses…"></textarea></section>
+</main>
+<script>
+const CARDS=['HSBC','Citibank','UOB','DBS'];
+const CUT={HSBC:5,Citibank:5,DBS:12};
+const pd=s=>{const[y,m,d]=s.split('-').map(Number);return new Date(y,m-1,d)};
+const iso=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+const fd=d=>d.toLocaleDateString('en-GB',{day:'numeric',month:'short'});
+const money=n=>(n<0?'−':'')+'$'+Math.abs(n).toLocaleString('en-SG',{minimumFractionDigits:2,maximumFractionDigits:2});
+const esc=s=>String(s??'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
+const sum=(a,k)=>a.reduce((t,x)=>t+(+x[k]||0),0);
+let S=null;try{S=JSON.parse(localStorage.getItem('ledger-v1'))}catch(e){}
+if(!S){S={updated:iso(new Date()),bank:'',useMe:true,useI:true,income:[],owedMe:[],iOwe:[],loans:[],fixed:[],notes:{},
+ cards:Object.fromEntries(CARDS.map((c,i)=>[c,{day:[15,20,25,28][i],cur:'',next:'',c:''}]))}}
+S.fixed.forEach(f=>{if(!f.dt){const u=pd(S.updated);f.dt=iso(new Date(u.getFullYear(),u.getMonth(),Math.min(+f.day||1,new Date(u.getFullYear(),u.getMonth()+1,0).getDate())))}});
+CARDS.forEach(n=>{const c=S.cards[n];if(c&&c.stmt===undefined)c.stmt=CUT[n]||''});
+const save=()=>{try{localStorage.setItem('ledger-v1',JSON.stringify(S))}catch(e){}};
+const cardSel={k:'card',t:'select'},cardBankSel={k:'card',t:'select',bank:true};
+const SEC={
+ income:{cols:[{k:'d',ph:'Description'},{k:'a',t:'number',ph:'Amount',w:90},{k:'dt',t:'date'},{k:'rep',t:'checkbox'},{k:'c',ph:'Comment'}],def:()=>({d:'',a:'',dt:S.updated,rep:false,c:''}),amt:'a'},
+ owedMe:{cols:[{k:'n',ph:'Name'},{k:'a',t:'number',ph:'Amount',w:90},{k:'c',ph:'Comment'}],def:()=>({n:'',a:'',c:''}),amt:'a'},
+ iOwe:{cols:[{k:'n',ph:'Name'},{k:'a',t:'number',ph:'Amount',w:90},{k:'c',ph:'Comment'}],def:()=>({n:'',a:'',c:''}),amt:'a'},
+ loans:{cols:[{k:'n',ph:'Loan'},{k:'rem',t:'number',ph:'Remaining',w:100},{k:'a',t:'number',ph:'Monthly',w:90},{t:'calc'},{k:'paid',t:'months'},{k:'c',ph:'Comment'}],def:()=>({n:'',rem:'',a:'',paid:[],c:''}),amt:'rem'},
+ fixed:{cols:[{k:'d',ph:'Description'},{k:'a',t:'number',ph:'Amount',w:90},{k:'dt',t:'date'},cardBankSel,{k:'rep',t:'checkbox'},{k:'c',ph:'Comment'}],def:()=>({d:'',a:'',dt:S.updated,card:'HSBC',rep:false,c:''}),amt:'a'}
+};
+const HEAD={income:['Description','Amount','Date','Repeats monthly','Comment'],owedMe:['Name','Amount','Comment'],iOwe:['Name','Amount','Comment'],loans:['Loan','Remaining amount','Monthly','After payments','Paid months','Comment'],fixed:['Description','Amount','Bill date','Card / Bank','Repeats monthly','Comment']};
+const mkey=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
+const mfull=k=>{const[y,m]=k.split('-').map(Number);return new Date(y,m-1,1).toLocaleDateString('en-GB',{month:'long',year:'numeric'})};
+const mlab=a=>a.length?[...a].sort().map(k=>{const[y,m]=k.split('-').map(Number);return new Date(y,m-1,1).toLocaleDateString('en-GB',{month:'short',year:'2-digit'})}).join(', '):'Select months';
+function tgM(k,i,v,el){const a=S[k][i].paid=S[k][i].paid||[],x=a.indexOf(v);if(el.checked){if(x<0)a.push(v)}else if(x>=0)a.splice(x,1);save();el.closest('details').querySelector('summary').textContent=mlab(a);calc()}
+function cell(key,i,c,r){
+ const h=`oninput="up('${key}',${i},'${c.k}',this.value,'${c.t||''}')"`,w=c.w?`style="min-width:${c.w}px"`:'';
+ if(c.t==='calc')return`<td class="n"><b id="ll${i}">—</b></td>`;
+ if(c.t==='months'){const u=pd(S.updated),have=r[c.k]||[],keys=[];for(let k=1;k<=24;k++){const d=new Date(u.getFullYear(),u.getMonth()+k,1);keys.push(mkey(d))}have.forEach(x=>{if(!keys.includes(x))keys.push(x)});keys.sort();
+  return`<td><details class="dd"><summary>${mlab(have)}</summary><div class="ddl">${keys.map(x=>`<label class="chk"><input type="checkbox" ${have.includes(x)?'checked':''} onchange="tgM('${key}',${i},'${x}',this)"> ${mfull(x)}</label>`).join('')}</div></details></td>`}
+ if(c.t==='checkbox')return`<td style="text-align:center"><input type="checkbox" style="width:auto" ${r[c.k]?'checked':''} onchange="up('${key}',${i},'${c.k}',this.checked)" aria-label="Repeats every month"></td>`;
+ if(c.t==='select')return`<td><select ${h.replace('oninput','onchange')}>${(c.bank?[...CARDS,'Bank']:CARDS).map(x=>`<option${r[c.k]===x?' selected':''}>${x}</option>`).join('')}</select></td>`;
+ return`<td><input ${w} type="${c.t||'text'}" ${c.t==='number'?'step="0.01"':''} placeholder="${c.ph||''}" value="${esc(r[c.k])}" ${h} aria-label="${c.ph||c.k}"></td>`}
+function draw(key){
+ const sc=SEC[key];
+ document.getElementById('t-'+key).innerHTML=`<table><thead><tr>${HEAD[key].map(h=>`<th>${h}</th>`).join('')}<th></th></tr></thead><tbody>${
+  S[key].map((r,i)=>'<tr>'+sc.cols.map(c=>cell(key,i,c,r)).join('')+`<td><button class="x" onclick="del('${key}',${i})" aria-label="Remove row">×</button></td></tr>`).join('')||`<tr><td colspan="9" class="mute">Nothing here yet.</td></tr>`}</tbody></table>`}
+function up(k,i,f,v,t){S[k][i][f]=v;save();calc()}
+function add(k){S[k].push(SEC[k].def());save();draw(k);calc()}
+function del(k,i){S[k].splice(i,1);save();draw(k);calc()}
+function upCard(n,f,v){S.cards[n][f]=v;save();calc()}
+function cdate(day,off){const u=pd(S.updated),y=u.getFullYear(),m=u.getMonth()+off,dim=new Date(y,m+1,0).getDate();return new Date(y,m,Math.min(+day||1,dim))}
+const fday=f=>f.dt?pd(f.dt).getDate():0;
+const started=(f,o)=>{if(!f.dt)return false;const d=pd(f.dt),u=pd(S.updated);return d.getFullYear()*12+d.getMonth()<=u.getFullYear()*12+u.getMonth()+o};
+function xv(t){t=String(t??'').replace(/^=/,'').replace(/[$,\s]/g,'');if(t==='')return 0;if(!/^[0-9+\-*\/().]+$/.test(t))return NaN;try{const v=Function('"use strict";return('+t+')')();return typeof v==='number'&&isFinite(v)?v:NaN}catch(e){return NaN}}
+const bi=(n,c,k,lab)=>{const raw=c[k]??'',v=xv(raw),plain=/^[0-9]*\.?[0-9]*$/.test(String(raw).replace(/[$,\s]/g,'')),note=String(raw).trim()===''||plain?'':(isNaN(v)?'<div class="neg ev">Check formula</div>':`<div class="mute ev">= ${money(v)}</div>`);return`<input type="text" inputmode="decimal" autocomplete="off" style="min-width:96px" placeholder="0.00" value="${esc(raw)}" data-f="${n}.${k}" oninput="upCard('${n}','${k}',this.value)" aria-label="${n} ${lab} bill">${note}`};
+function cardTotals(n){
+ const c=S.cards[n],ud=pd(S.updated).getDate(),ui=pd(S.updated),ux=ui.getFullYear()*12+ui.getMonth();
+ const ln=0,F=S.fixed.filter(f=>f.card===n&&f.dt);
+ const sh=f=>fday(f)>(+c.stmt||31)?1:0;
+ const ix=f=>{const d=pd(f.dt);return d.getFullYear()*12+d.getMonth()};
+ const L=f=>ix(f)+sh(f);
+ const ac=[0,1,2].map(o=>sum(F.filter(f=>f.rep?(o===0?(!sh(f)&&ix(f)<=ux&&fday(f)>ud):L(f)<=ux+o):(L(f)===ux+o&&(o>0||pd(f.dt)>ui))),'a')+ln);
+ const man=[c.cur,c.next,c.next2];
+ return{ac,tot:ac.map((a,o)=>(xv(man[o])||0)+a)}}
+const mon=off=>{const u=pd(S.updated);return new Date(u.getFullYear(),u.getMonth()+off,1).toLocaleDateString('en-GB',{month:'long'})};
+const cls=n=>n<0?'neg':'';
+function occ(d0,rep,u){if(!rep)return d0>=u?[d0]:[];const out=[],end=new Date(u.getFullYear(),u.getMonth()+3,0);for(let k=0;k<60;k++){const y=d0.getFullYear(),m=d0.getMonth()+k,dim=new Date(y,m+1,0).getDate(),d=new Date(y,m,Math.min(d0.getDate(),dim));if(d>end)break;if(d>=u)out.push(d)}return out}
+function calc(){
+ const me=sum(S.owedMe,'a'),io=sum(S.iOwe,'a'),bank=+S.bank||0;
+ const adj=bank+(S.useMe?me:0)-(S.useI?io:0);
+ const set=(id,v)=>document.getElementById(id).textContent=v;
+ set('c-bank',money(bank));set('c-me',S.useMe?money(me):'off');set('c-io',S.useI?money(-io):'off');
+ const a=document.getElementById('adj');a.textContent=money(adj);a.style.color=adj<0?'var(--bad)':'';
+ set('tot-income',money(sum(S.income,'a')));set('tot-owedMe',money(me));set('tot-iOwe',money(io));
+ let lt=0;S.loans.forEach((l,i)=>{const e=document.getElementById('ll'+i),has=String(l.rem??'')!=='',left=Math.max(0,(+l.rem||0)-(+l.a||0)*(l.paid||[]).length);if(has)lt+=left;if(e)e.textContent=has?money(left):'—'});
+ set('tot-loans',money(lt)+' left');set('tot-fixed',money(sum(S.fixed.filter(f=>f.dt&&pd(f.dt)>pd(S.updated)),'a'))+' left');
+ // cards
+ let rows='';
+ const ev=[];const u=pd(S.updated);
+ CARDS.forEach(n=>{const c=S.cards[n],t=cardTotals(n);
+  rows+=`<tr><td><b>${n}</b></td><td><input type="number" min="1" max="31" style="width:64px" placeholder="—" value="${esc(c.stmt)}" data-f="${n}.stmt" oninput="upCard('${n}','stmt',this.value)" aria-label="${n} statement day"></td><td><input type="number" style="width:64px" value="${esc(c.day)}" data-f="${n}.day" oninput="upCard('${n}','day',this.value)" aria-label="${n} payment day"></td>
+  <td>${bi(n,c,'cur','current')}</td><td>${bi(n,c,'next','next')}</td><td>${bi(n,c,'next2','third month')}</td>
+  <td class="n mute">${t.ac.map(money).join(' / ')}</td>${t.tot.map(x=>`<td class="n"><b>${money(x)}</b></td>`).join('')}
+  <td><input placeholder="Comment" value="${esc(c.c)}" data-f="${n}.c" oninput="upCard('${n}','c',this.value)" aria-label="${n} comment"></td></tr>`;
+  t.tot.forEach((amt,o)=>{const d=cdate(c.day,o);if(amt&&d>=u)ev.push({d,l:`${n} bill (${mon(o)})`,a:-amt,t:'out'})})});
+ const tc=CARDS.reduce((x,n)=>{const t=cardTotals(n).tot;return x.map((v,i)=>v+t[i])},[0,0,0]);
+ const ae=document.activeElement,fid=ae&&ae.dataset&&ae.dataset.f,ss=fid?ae.selectionStart:null,se=fid?ae.selectionEnd:null;
+ document.getElementById('cards').innerHTML=`<table><thead><tr><th>Card</th><th>Statement day</th><th>Pay day</th><th>${mon(0)} bill</th><th>${mon(1)} bill</th><th>${mon(2)} bill</th><th class="n">Auto-added (3 months)</th><th class="n">${mon(0)} total</th><th class="n">${mon(1)} total</th><th class="n">${mon(2)} total</th><th>Comment</th></tr></thead><tbody>${rows}</tbody><tfoot><tr><td colspan="7" class="n mute">All cards</td>${tc.map(x=>`<td class="n tot">${money(x)}</td>`).join('')}<td></td></tr></tfoot></table>`;
+ if(fid){const e=document.querySelector('[data-f="'+fid+'"]');if(e){e.focus();try{e.setSelectionRange(ss,se)}catch(_){}}}
+ // timeline
+ S.fixed.filter(f=>f.card==='Bank'&&f.dt&&+f.a).forEach(f=>{const d0=pd(f.dt),nm=(f.d||'Fixed expense')+' (bank)';if(!f.rep){if(d0>=u)ev.push({d:d0,l:nm,a:-(+f.a),t:'out'});return}const end=new Date(u.getFullYear(),u.getMonth()+3,0);for(let k=0;k<60;k++){const y=d0.getFullYear(),m=d0.getMonth()+k,dim=new Date(y,m+1,0).getDate(),d=new Date(y,m,Math.min(d0.getDate(),dim));if(d>end)break;if(d>=u)ev.push({d,l:nm,a:-(+f.a),t:'out'})}});
+ S.income.forEach(i=>{if(i.dt&&+i.a)occ(pd(i.dt),i.rep,u).forEach(d=>ev.push({d,l:i.d||'Income',a:+i.a,t:'in'}))});
+ ev.sort((x,y)=>x.d-y.d||y.a-x.a);
+ let b=adj;
+ let tr=`<tr class="st"><td>${fd(u)}</td><td>Starting balance</td><td class="n">—</td><td class="n">${money(b)}</td></tr>`;
+ ev.forEach(e=>{b+=e.a;tr+=`<tr><td>${fd(e.d)}</td><td><span class="tag ${e.t}">${e.t==='in'?'Income':'Payment'}</span>${esc(e.l)}</td><td class="n ${e.a<0?'neg':'pos'}">${e.a<0?'−':'+'}${money(Math.abs(e.a))}</td><td class="n ${cls(b)}"><b>${money(b)}</b></td></tr>`});
+ document.getElementById('timeline').innerHTML=`<table class="tl"><thead><tr><th>Date</th><th>Event</th><th class="n">Amount</th><th class="n">Balance after</th></tr></thead><tbody>${tr}</tbody></table>`}
+// init
+const U=document.getElementById('updated');U.value=S.updated;U.oninput=()=>{if(U.value){S.updated=U.value;save();calc()}};
+const UL=document.getElementById('updLock');UL.onclick=()=>{const lock=!U.disabled;U.disabled=lock;UL.textContent=lock?'Edit date':'Lock date';if(!lock)U.focus()};
+const B=document.getElementById('bank');B.value=S.bank;B.oninput=()=>{S.bank=B.value;save();calc()};
+['useMe','useI'].forEach(k=>{const e=document.getElementById(k);e.checked=S[k];e.onchange=()=>{S[k]=e.checked;save();calc()}});
+document.querySelectorAll('[data-note]').forEach(t=>{t.value=S.notes[t.dataset.note]||'';t.oninput=()=>{S.notes[t.dataset.note]=t.value;save()}});
+Object.keys(SEC).forEach(draw);calc();
+</script></body></html>
