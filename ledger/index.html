@@ -18,6 +18,7 @@ label.d{display:flex;flex-direction:column;gap:4px;color:var(--mute);font-size:1
 .upd{display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center}.upd label.d{align-items:center}.upd input{width:auto;text-align:center}input:disabled{opacity:.8;cursor:not-allowed}
 @media(max-width:720px){header{grid-template-columns:1fr;justify-items:center;text-align:center}}
 [hidden]{display:none!important}
+.fl{display:flex;flex-direction:column}.fl textarea{flex:1 1 auto;min-height:80px}
 .hb{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .lp{max-width:1100px;margin:16px auto 40px;padding:0 24px}@media(max-width:720px){.lp{padding:0 12px}}
 .ls td{padding:6px 8px;border-top:1px solid var(--line)}
@@ -56,7 +57,7 @@ button.x{border-color:var(--line);color:var(--mute);padding:5px 9px}button.x:hov
  <div class="upd"><label class="d">Last updated<input type="date" id="updated" aria-label="Last updated date" disabled></label><button id="updLock" type="button">Edit date</button></div>
 </header>
 <main>
- <section class="p s3"><div class="ph"><h2>Bank balance</h2></div>
+ <section class="p s3 fl"><div class="ph"><h2>Bank balance</h2></div>
   <label class="d">Balance in account today<input type="text" inputmode="decimal" autocomplete="off" id="bank" placeholder="0.00 or 1200+350-80"><span id="bank-eq" class="mute"></span></label>
   <label class="chk"><input type="checkbox" id="useMe"> Add what people owe me</label>
   <label class="chk"><input type="checkbox" id="useI"> Deduct what I owe people</label>
