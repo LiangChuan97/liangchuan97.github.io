@@ -42,6 +42,7 @@ th{text-align:left;font:500 13px Barlow,sans-serif;color:var(--mute);padding:0 4
 td{padding:3px 3px;vertical-align:middle}
 td.n,th.n{text-align:right}
 #t-owedMe td{vertical-align:top}
+.chip.on{background:var(--brass);color:#171b1f}
 .sg{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:6px}.chip{padding:3px 10px;font-size:13px}
 .cw{position:relative;display:inline-block}.cal{position:absolute;z-index:30;top:calc(100% + 6px);left:0;width:268px;background:var(--panel);border:1px solid var(--line);border-top:3px solid var(--brass);border-radius:3px;padding:10px;box-shadow:0 8px 24px rgba(0,0,0,.35)}
 .cn{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}.cn button{padding:3px 10px}.cg{display:grid;grid-template-columns:repeat(7,1fr);gap:3px}.cd{font-size:12px;color:var(--mute);text-align:center;padding:2px 0}
@@ -214,12 +215,19 @@ function lgPick(v){if(!v)return;const had=S.log.some(r=>r.dt===v);if(!had){S.log
  document.getElementById('t-log').addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.matches&&e.target.matches('input[aria-label="Amount"]')){const sec=e.target.closest('.ds'),rows=sec.querySelectorAll('tbody tr');if(e.target.closest('tr')===rows[rows.length-1]){e.preventDefault();lgAddRow(sec.dataset.d)}}})})();
 const lgIsName=t=>t&&t.matches&&t.matches('#t-log input[aria-label="Name"]');
 function lgClearSug(){document.querySelectorAll('#t-log .sg').forEach(x=>x.remove())}
-function lgSug(inp){lgClearSug();const q=inp.value.trim().toLowerCase(),ns=logGroups().filter(x=>x.k!=='').map(x=>x.n).filter(n=>n.toLowerCase()!==q&&(!q||n.toLowerCase().includes(q))).slice(0,8);if(!ns.length)return;const d=document.createElement('div');d.className='sg';d.innerHTML='<span class="mute">Suggestions:</span>'+ns.map(n=>`<button type="button" class="chip" data-n="${esc(n)}">${esc(n)}</button>`).join('');inp.closest('td').appendChild(d)}
+let lgSel=-1;
+function lgMark(){document.querySelectorAll('#t-log .sg .chip').forEach((c,i)=>c.classList.toggle('on',i===lgSel))}
+function lgTake(inp,name){inp.value=name;inp.dispatchEvent(new Event('input',{bubbles:true}));const n=inp.closest('tr').querySelectorAll('input')[1];lgClearSug();if(n)n.focus()}
+function lgSug(inp){lgClearSug();lgSel=-1;const q=inp.value.trim().toLowerCase(),ns=logGroups().filter(x=>x.k!=='').map(x=>x.n).filter(n=>n.toLowerCase()!==q&&(!q||n.toLowerCase().startsWith(q))).slice(0,8);if(!ns.length)return;const d=document.createElement('div');d.className='sg';d.innerHTML='<span class="mute">Suggestions (↓ to choose):</span>'+ns.map(n=>`<button type="button" class="chip" data-n="${esc(n)}">${esc(n)}</button>`).join('');inp.closest('td').appendChild(d)}
 (function(){const host=document.getElementById('t-log');
  document.addEventListener('focusin',e=>{if(lgIsName(e.target))lgSug(e.target);else lgClearSug()});
  host.addEventListener('input',e=>{if(lgIsName(e.target))lgSug(e.target)});
  host.addEventListener('mousedown',e=>{if(e.target.closest('.chip'))e.preventDefault()});
- host.addEventListener('click',e=>{const c=e.target.closest('.chip');if(!c)return;const td=c.closest('td'),t=td.querySelector('input');t.value=c.dataset.n;t.dispatchEvent(new Event('input',{bubbles:true}));const n=t.closest('tr').querySelectorAll('input')[1];lgClearSug();if(n)n.focus()})})();
+ host.addEventListener('click',e=>{const c=e.target.closest('.chip');if(!c)return;lgTake(c.closest('td').querySelector('input'),c.dataset.n)});
+ host.addEventListener('keydown',e=>{if(!lgIsName(e.target))return;const cs=[...host.querySelectorAll('.sg .chip')];if(e.key==='Escape'){lgClearSug();return}if(!cs.length)return;
+  if(e.key==='ArrowDown'){e.preventDefault();lgSel=Math.min(lgSel+1,cs.length-1);lgMark()}
+  else if(e.key==='ArrowUp'){e.preventDefault();lgSel=Math.max(lgSel-1,-1);lgMark()}
+  else if(e.key==='Enter'&&lgSel>=0){e.preventDefault();lgTake(e.target,cs[lgSel].dataset.n)}})})();
 const lgKey=r=>String(r.n||'').trim().toLowerCase();
 function lgAfter(){save();draw('log');calc()}
 function lgRename(k,v){const nv=String(v).trim();S.log.forEach(r=>{if(lgKey(r)===k)r.n=nv});if(S.logc&&S.logc[k]!==undefined){const nk=nv.toLowerCase();if(nk!==k){if(S.logc[nk]===undefined)S.logc[nk]=S.logc[k];delete S.logc[k]}}lgAfter()}
