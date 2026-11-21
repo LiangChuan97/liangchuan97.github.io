@@ -198,7 +198,7 @@ function lgAddRow(d){S.log.push({dt:d,n:'',d:'',a:'',c:''});save();draw('log');c
 function lgPick(v){if(!v)return;const had=S.log.some(r=>r.dt===v);if(!had){S.log.push({dt:v,n:'',d:'',a:'',c:''});save()}draw('log');calc();const sec=lgSec(v);if(sec){sec.scrollIntoView({block:'nearest'});const rows=[...sec.querySelectorAll('tbody tr')];const r=had?rows[rows.length-1]:rows[0];if(r)r.querySelector('input').focus()}}
 (function(){const b=document.getElementById('lgDateBtn'),i=document.getElementById('lgDate');
  b.onclick=()=>{try{if(i.showPicker){i.showPicker();return}}catch(e){}i.classList.remove('vh');i.focus()};
- const done=()=>{i.blur();i.classList.add('vh');i.type='text';i.type='date';i.value=''};
+ const done=()=>{i.value='';setTimeout(()=>{i.blur();i.classList.add('vh')},0)};
  const take=()=>{const v=i.value;if(!/^\d{4}-\d{2}-\d{2}$/.test(v)||v<'2000-01-01'||v>'2100-12-31')return;done();setTimeout(()=>lgPick(v),0)};
  i.addEventListener('change',take);i.addEventListener('input',take);
  document.getElementById('t-log').addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.matches&&e.target.matches('input[aria-label="Amount"]')){const sec=e.target.closest('.ds'),rows=sec.querySelectorAll('tbody tr');if(e.target.closest('tr')===rows[rows.length-1]){e.preventDefault();lgAddRow(sec.dataset.d)}}})})();
