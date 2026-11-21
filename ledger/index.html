@@ -145,7 +145,7 @@ let S=null;try{S=JSON.parse(localStorage.getItem('ledger-v1'))}catch(e){}
 if(!S){S={updated:iso(new Date()),bank:'',useMe:true,useI:true,income:[],owedMe:[],iOwe:[],log:[],loans:[],fixed:[],notes:{},
  cards:Object.fromEntries(CARDS.map((c,i)=>[c,{day:[15,20,25,28][i],cur:'',next:'',c:''}]))}}
 S.fixed.forEach(f=>{if(!f.dt){const u=pd(S.updated);f.dt=iso(new Date(u.getFullYear(),u.getMonth(),Math.min(+f.day||1,new Date(u.getFullYear(),u.getMonth()+1,0).getDate())))}});
-Object.keys(S.cards).forEach(n=>{if(!CARDS.includes(n))CARDS.push(n)});
+CARDS.length=0;CARDS.push(...Object.keys(S.cards));
 CARDS.forEach(n=>{const c=S.cards[n];if(c&&c.stmt===undefined)c.stmt=CUT[n]||''});
 const save=()=>{try{localStorage.setItem('ledger-v1',JSON.stringify(S))}catch(e){}};
 if(!S.log)S.log=[];if(!S.logSubHide)S.logSubHide={};if(!S.logFilter)S.logFilter=[];if(!Array.isArray(S.tlMonths))S.tlMonths=S.tlMonth?[S.tlMonth]:[];if(!S.logc)S.logc={};
@@ -189,7 +189,7 @@ document.addEventListener('focusout',e=>{if(!pendSort.size)return;const t=e.targ
 function del(k,i){S[k].splice(i,1);save();draw(k);calc()}
 function ccAddOpen(o){document.getElementById('ccForm').hidden=!o;document.getElementById('ccAddBtn').hidden=o;document.getElementById('ccErr').textContent='';if(o){const i=document.getElementById('ccName');i.value='';i.focus()}}
 function ccAdd(){const i=document.getElementById('ccName'),n=i.value.trim().replace(/\s+/g,' '),er=document.getElementById('ccErr');if(!n){er.textContent='Enter a card name.';return}if(!/^[A-Za-z0-9 \-]{1,20}$/.test(n)){er.textContent='Use letters, numbers, spaces or hyphens (max 20).';return}if(n.toLowerCase()==='bank'||CARDS.some(x=>x.toLowerCase()===n.toLowerCase())){er.textContent='That name is already used.';return}S.cards[n]={day:'',stmt:'',cur:'',next:'',next2:'',c:''};CARDS.push(n);save();ccAddOpen(false);draw('fixed');calc()}
-function ccDel(n){const er=document.getElementById('ccErr'),c=S.cards[n];if(S.fixed.some(f=>f.card===n)){er.textContent=n+' is used by a fixed expense. Change those rows first.';return}if(c&&[c.cur,c.next,c.next2,c.c].some(v=>String(v||'').trim())){er.textContent='Clear '+n+'\u2019s bills and comment first.';return}delete S.cards[n];CARDS.splice(CARDS.indexOf(n),1);er.textContent='';save();draw('fixed');calc()}
+function ccDel(n,btn){const er=document.getElementById('ccErr');if(S.fixed.some(f=>f.card===n)){er.textContent=n+' is used by a fixed expense. Change those rows first.';return}if(btn&&btn.textContent!=='Sure?'){er.textContent='';btn.textContent='Sure?';btn.style.width='auto';btn.title='Click again to delete this card and its bills';setTimeout(()=>{if(btn.isConnected){btn.textContent='×';btn.style.width='';btn.title=''}},3000);return}delete S.cards[n];const k=CARDS.indexOf(n);if(k>=0)CARDS.splice(k,1);er.textContent='';save();draw('fixed');calc()}
 function upCard(n,f,v){S.cards[n][f]=v;save();calc()}
 function cdate(day,off){const u=pd(S.updated),y=u.getFullYear(),m=u.getMonth()+off,dim=new Date(y,m+1,0).getDate();return new Date(y,m,Math.min(+day||1,dim))}
 const fday=f=>f.dt?pd(f.dt).getDate():0;
@@ -289,14 +289,14 @@ function calc(){mathNotes();logViews();
  let rows='';
  const ev=[];const u=pd(S.updated);
  CARDS.forEach(n=>{const c=S.cards[n],t=cardTotals(n);
-  rows+=`<tr><td><b>${esc(n)}</b>${DEFC.includes(n)?'':` <button class="x" type="button" onclick="ccDel('${n}')" aria-label="Remove ${esc(n)} card">×</button>`}</td><td><input type="number" min="1" max="31" style="width:64px" placeholder="—" value="${esc(c.stmt)}" data-f="${n}.stmt" oninput="upCard('${n}','stmt',this.value)" aria-label="${n} statement day"></td><td><input type="number" style="width:64px" value="${esc(c.day)}" data-f="${n}.day" oninput="upCard('${n}','day',this.value)" aria-label="${n} payment day"></td>
+  rows+=`<tr><td><b>${esc(n)}</b></td><td><input type="number" min="1" max="31" style="width:64px" placeholder="—" value="${esc(c.stmt)}" data-f="${n}.stmt" oninput="upCard('${n}','stmt',this.value)" aria-label="${n} statement day"></td><td><input type="number" style="width:64px" value="${esc(c.day)}" data-f="${n}.day" oninput="upCard('${n}','day',this.value)" aria-label="${n} payment day"></td>
   <td>${bi(n,c,'cur','current')}</td><td>${bi(n,c,'next','next')}</td><td>${bi(n,c,'next2','third month')}</td>
   <td class="n mute">${t.ac.slice(0,3).map(money).join(' / ')}</td>${t.tot.slice(0,3).map(x=>`<td class="n"><b>${money(x)}</b></td>`).join('')}
-  <td><input placeholder="Comment" value="${esc(c.c)}" data-f="${n}.c" oninput="upCard('${n}','c',this.value)" aria-label="${n} comment"></td></tr>`;
+  <td><input placeholder="Comment" value="${esc(c.c)}" data-f="${n}.c" oninput="upCard('${n}','c',this.value)" aria-label="${n} comment"></td><td><button class="x" type="button" onclick="ccDel('${n}',this)" aria-label="Remove ${esc(n)} card">×</button></td></tr>`;
   t.tot.forEach((amt,o)=>{const d=cdate(c.day,o),late=d<u;if(amt)ev.push({d:late?u:d,l:`${n} bill (${new Date(u.getFullYear(),u.getMonth()+o,1).toLocaleDateString('en-GB',{month:'short',year:'numeric'})})`+(late?` – pay day ${fd(d)} already passed`:''),a:-amt,t:'out'})})});
  const tc=CARDS.reduce((x,n)=>{const t=cardTotals(n).tot;return x.map((v,i)=>v+t[i])},[0,0,0]);
  const ae=document.activeElement,fid=ae&&ae.dataset&&ae.dataset.f,ss=fid?ae.selectionStart:null,se=fid?ae.selectionEnd:null;
- document.getElementById('cards').innerHTML=`<table><thead><tr><th>Card</th><th>Statement day</th><th>Pay day</th><th>${mon(0)} bill</th><th>${mon(1)} bill</th><th>${mon(2)} bill</th><th class="n">Auto-added (3 months)</th><th class="n">${mon(0)} total</th><th class="n">${mon(1)} total</th><th class="n">${mon(2)} total</th><th>Comment</th></tr></thead><tbody>${rows}</tbody><tfoot><tr><td colspan="7" class="n mute">All cards</td>${tc.map(x=>`<td class="n tot">${money(x)}</td>`).join('')}<td></td></tr></tfoot></table>`;
+ document.getElementById('cards').innerHTML=`<table><thead><tr><th>Card</th><th>Statement day</th><th>Pay day</th><th>${mon(0)} bill</th><th>${mon(1)} bill</th><th>${mon(2)} bill</th><th class="n">Auto-added (3 months)</th><th class="n">${mon(0)} total</th><th class="n">${mon(1)} total</th><th class="n">${mon(2)} total</th><th>Comment</th><th></th></tr></thead><tbody>${rows}</tbody><tfoot><tr><td colspan="7" class="n mute">All cards</td>${tc.map(x=>`<td class="n tot">${money(x)}</td>`).join('')}<td></td><td></td></tr></tfoot></table>`;
  if(fid){const e=document.querySelector('[data-f="'+fid+'"]');if(e){e.focus();try{e.setSelectionRange(ss,se)}catch(_){}}}
 // timeline
  S.fixed.filter(f=>f.card==='Bank'&&f.dt&&+f.a).forEach(f=>{const d0=pd(f.dt),nm=(f.d||'Fixed expense')+' (bank)';if(!f.rep){if(d0>=u)ev.push({d:d0,l:nm,a:-(+f.a),t:'out'});return}const end=new Date(u.getFullYear(),u.getMonth()+horizon(),0);for(let k=0;k<60;k++){const y=d0.getFullYear(),m=d0.getMonth()+k,dim=new Date(y,m+1,0).getDate(),d=new Date(y,m,Math.min(d0.getDate(),dim));if(d>end)break;if(d>=u)ev.push({d,l:nm,a:-(+f.a),t:'out'})}});
