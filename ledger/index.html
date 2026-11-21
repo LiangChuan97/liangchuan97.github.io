@@ -167,7 +167,7 @@ function calc(){
   <td>${bi(n,c,'cur','current')}</td><td>${bi(n,c,'next','next')}</td><td>${bi(n,c,'next2','third month')}</td>
   <td class="n mute">${t.ac.map(money).join(' / ')}</td>${t.tot.map(x=>`<td class="n"><b>${money(x)}</b></td>`).join('')}
   <td><input placeholder="Comment" value="${esc(c.c)}" data-f="${n}.c" oninput="upCard('${n}','c',this.value)" aria-label="${n} comment"></td></tr>`;
-  t.tot.forEach((amt,o)=>{const d=cdate(c.day,o);if(amt&&d>=u)ev.push({d,l:`${n} bill (${mon(o)})`,a:-amt,t:'out'})})});
+  t.tot.forEach((amt,o)=>{const d=cdate(c.day,o),late=d<u;if(amt)ev.push({d:late?u:d,l:`${n} bill (${mon(o)})`+(late?` – pay day ${fd(d)} already passed`:''),a:-amt,t:'out'})})});
  const tc=CARDS.reduce((x,n)=>{const t=cardTotals(n).tot;return x.map((v,i)=>v+t[i])},[0,0,0]);
  const ae=document.activeElement,fid=ae&&ae.dataset&&ae.dataset.f,ss=fid?ae.selectionStart:null,se=fid?ae.selectionEnd:null;
  document.getElementById('cards').innerHTML=`<table><thead><tr><th>Card</th><th>Statement day</th><th>Pay day</th><th>${mon(0)} bill</th><th>${mon(1)} bill</th><th>${mon(2)} bill</th><th class="n">Auto-added (3 months)</th><th class="n">${mon(0)} total</th><th class="n">${mon(1)} total</th><th class="n">${mon(2)} total</th><th>Comment</th></tr></thead><tbody>${rows}</tbody><tfoot><tr><td colspan="7" class="n mute">All cards</td>${tc.map(x=>`<td class="n tot">${money(x)}</td>`).join('')}<td></td></tr></tfoot></table>`;
