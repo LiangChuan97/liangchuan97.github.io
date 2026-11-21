@@ -41,6 +41,7 @@ table{width:100%;border-collapse:collapse}
 th{text-align:left;font:500 13px Barlow,sans-serif;color:var(--mute);padding:0 4px 6px;white-space:nowrap}
 td{padding:3px 3px;vertical-align:middle}
 td.n,th.n{text-align:right}
+tr.lg{cursor:pointer}tr.lg input{cursor:pointer;color:var(--mute)}
 #t-owedMe td,#t-iOwe td,#t-income td,#t-log td{vertical-align:top}
 #t-owedMe button.x,#t-iOwe button.x,#t-income button.x,#t-log button.x{margin-top:4px}
 #t-income td input[type=checkbox]{margin-top:12px}
@@ -77,7 +78,6 @@ button.x{border-color:var(--line);color:var(--mute);padding:5px 9px}button.x:hov
 
  <section class="p s4"><div class="ph"><div class="hb"><h2>People owe me</h2><button type="button" onclick="showView('log')">Expense log</button></div><span class="tot pos" id="tot-owedMe"></span></div>
   <div class="w" id="t-owedMe"></div><button onclick="add('owedMe')">+ Add person</button>
-  <div id="logsum"></div>
   <div class="ph" style="margin-top:20px"><h2>I owe people</h2><span class="tot neg" id="tot-iOwe"></span></div>
   <div class="w" id="t-iOwe"></div><button onclick="add('iOwe')">+ Add person</button>
   <textarea class="auto" data-note="owe" placeholder="Comments on debts…"></textarea></section>
@@ -184,7 +184,8 @@ const isLC=n=>String(n||'').trim().toLowerCase()==='lc';
 function logGroups(){const g=new Map();S.log.forEach(r=>{const a=xv(r.a)||0,nm=String(r.n||'').trim()||'(no name)',k=nm.toLowerCase();if(!a&&!String(r.n||'').trim())return;const e=g.get(k)||{n:nm,t:0,c:0,lc:isLC(nm)};e.t+=a;e.c++;g.set(k,e)});return[...g.values()]}
 function logViews(){const gs=logGroups(),tot=gs.filter(x=>!x.lc).reduce((t,x)=>t+x.t,0),tg=x=>x.lc?' <span class="tag">not in balance</span>':'';
  document.getElementById('tot-log').textContent=money(tot);
- document.getElementById('logsum').innerHTML=gs.length?`<div class="mute" style="margin:12px 0 4px">From expense log</div><table class="ls"><tbody>${gs.map(x=>`<tr><td>${esc(x.n)}${tg(x)}</td><td class="n ${x.lc?'mute':'pos'}">${money(x.t)}</td></tr>`).join('')}</tbody></table>`:'';
+ {const tb=document.querySelector('#t-owedMe tbody');if(tb){tb.querySelectorAll('tr.lg').forEach(r=>r.remove());const empty=tb.querySelector('td.mute[colspan]');if(empty)empty.closest('tr').hidden=gs.length>0;
+  gs.forEach(x=>{const tr=document.createElement('tr');tr.className='lg';tr.title='Entered in the Expense log. Click to open it.';tr.onclick=()=>showView('log');tr.innerHTML=`<td><input readonly tabindex="-1" value="${esc(x.n)}" aria-label="Name"></td><td><input readonly tabindex="-1" value="${x.t.toFixed(2)}" aria-label="Amount"></td><td><input readonly tabindex="-1" value="${x.lc?'Not in balance':'Expense log'}" aria-label="Source"></td><td></td>`;tb.appendChild(tr)})}}
  document.getElementById('logbyname').innerHTML=gs.length?`<table class="ls"><thead><tr><th>Name</th><th class="n">Entries</th><th class="n">Total owed</th></tr></thead><tbody>${gs.map(x=>`<tr><td>${esc(x.n)}${tg(x)}</td><td class="n">${x.c}</td><td class="n ${x.lc?'mute':'pos'}"><b>${money(x.t)}</b></td></tr>`).join('')}</tbody></table>`:''}
 function mathNotes(){['income','owedMe','iOwe','log'].forEach(k=>S[k].forEach((r,i)=>{const e=document.getElementById('eq-'+k+'-'+i);if(!e)return;const raw=String(r.a??'').trim(),pl=/^[0-9]*\.?[0-9]*$/.test(raw.replace(/[$,\s]/g,'')),v=xv(raw);e.className='ev '+(isNaN(v)?'neg':'mute');e.textContent=raw===''||pl?'':(isNaN(v)?'Check formula':'= '+money(v))}))}
 function calc(){mathNotes();logViews();
