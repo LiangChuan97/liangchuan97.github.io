@@ -18,7 +18,7 @@ label.d{display:flex;flex-direction:column;gap:4px;color:var(--mute);font-size:1
 .upd{display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center}.upd label.d{align-items:center}.upd input{width:auto;text-align:center}input:disabled{opacity:.8;cursor:not-allowed}
 @media(max-width:720px){header{grid-template-columns:1fr;justify-items:center;text-align:center}}
 [hidden]{display:none!important}
-.fl{display:flex;flex-direction:column}.fl textarea{flex:1 1 auto;min-height:260px}
+.fl{display:flex;flex-direction:column}.fl>button{align-self:flex-start}.fl textarea{flex:1 1 auto;min-height:260px}
 .hb{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .lp{max-width:1100px;margin:16px auto 40px;padding:0 24px}@media(max-width:720px){.lp{padding:0 12px}}
 .ls td{padding:6px 8px;border-top:1px solid var(--line)}
@@ -65,7 +65,7 @@ button.x{border-color:var(--line);color:var(--mute);padding:5px 9px}button.x:hov
   <div class="mute" style="margin-top:10px">Adjusted balance</div><div class="big" id="adj"></div>
   <textarea data-note="bank" placeholder="Comments on balance…"></textarea></section>
 
- <section class="p s5"><div class="ph"><h2>Possible income</h2><span class="tot" id="tot-income"></span></div>
+ <section class="p s5 fl"><div class="ph"><h2>Possible income</h2><span class="tot" id="tot-income"></span></div>
   <div class="w" id="t-income"></div><button onclick="add('income')">+ Add income</button>
   <div class="mute" style="margin-top:8px">Tick “Repeats monthly” for income that arrives every month on that day. It shows in the balance timeline for about three months ahead.</div>
   <textarea data-note="income" placeholder="Comments on income…"></textarea></section>
@@ -129,7 +129,7 @@ const SEC={
  loans:{cols:[{k:'n',ph:'Loan'},{k:'rem',t:'number',ph:'Remaining',w:100},{k:'a',t:'number',ph:'Monthly',w:90},{t:'calc'},{k:'paid',t:'months'},{k:'c',ph:'Comment'}],def:()=>({n:'',rem:'',a:'',paid:[],c:''}),amt:'rem'},
  fixed:{cols:[{k:'d',ph:'Description'},{k:'a',t:'number',ph:'Amount',w:90},{k:'dt',t:'date'},cardBankSel,{k:'rep',t:'checkbox'},{k:'c',ph:'Comment'}],def:()=>({d:'',a:'',dt:S.updated,card:'HSBC',rep:false,c:''}),amt:'a'}
 };
-const HEAD={log:['Date','Name','Description','Amount','Comment'],income:['Description','Amount','Date','Repeats monthly','Comment'],owedMe:['Name','Amount','Comment'],iOwe:['Name','Amount','Comment'],loans:['Loan','Remaining amount','Monthly','After payments','Paid months','Comment'],fixed:['Description','Amount','Bill date','Card / Bank','Repeats monthly','Comment']};
+const HEAD={log:['Date','Name','Description','Amount','Comment'],income:['Description','Amount','Date','Repeats<br>monthly','Comment'],owedMe:['Name','Amount','Comment'],iOwe:['Name','Amount','Comment'],loans:['Loan','Remaining amount','Monthly','After payments','Paid months','Comment'],fixed:['Description','Amount','Bill date','Card / Bank','Repeats monthly','Comment']};
 const mkey=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
 const mfull=k=>{const[y,m]=k.split('-').map(Number);return new Date(y,m-1,1).toLocaleDateString('en-GB',{month:'long',year:'numeric'})};
 const mlab=a=>a.length?[...a].sort().map(k=>{const[y,m]=k.split('-').map(Number);return new Date(y,m-1,1).toLocaleDateString('en-GB',{month:'short',year:'2-digit'})}).join(', '):'Select months';
