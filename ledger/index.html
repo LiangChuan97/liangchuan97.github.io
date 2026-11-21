@@ -32,6 +32,8 @@ main{display:grid;grid-template-columns:repeat(12,1fr);gap:16px;padding:16px 24p
 input,select,textarea{background:var(--inp);color:var(--text);border:1px solid var(--line);border-radius:2px;padding:7px 8px;font:inherit;width:100%;min-width:0}
 input:focus,select:focus,textarea:focus,button:focus-visible{outline:2px solid var(--brass);outline-offset:1px}
 textarea{resize:vertical;min-height:44px;margin-top:10px;font-size:14px}
+textarea.ta{margin-top:0;min-height:0;resize:none;overflow:hidden;font:inherit;line-height:1.3;min-width:130px;width:100%;display:block}
+input.fit{width:90px}
 .w{overflow-x:auto}
 .ev{font-size:12px;margin-top:2px}
 .dd{min-width:140px}.dd summary{cursor:pointer;background:var(--inp);border:1px solid var(--line);border-radius:2px;padding:7px 8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px}.dd[open] summary{border-color:var(--brass)}.ddl{max-height:190px;overflow:auto;border:1px solid var(--line);border-top:0;background:var(--panel2);padding:4px 10px}.ddl .chk{margin:5px 0}
@@ -112,6 +114,10 @@ const iso=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+Stri
 const fd=d=>d.toLocaleDateString('en-GB',{day:'numeric',month:'short'});
 const money=n=>(n<0?'−':'')+'$'+Math.abs(n).toLocaleString('en-SG',{minimumFractionDigits:2,maximumFractionDigits:2});
 const esc=s=>String(s??'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
+const grow=t=>{t.style.height='auto';t.style.height=(t.scrollHeight+2)+'px'};
+const _cv=document.createElement('canvas').getContext('2d');
+const fitW=el=>{const cs=getComputedStyle(el);_cv.font=cs.fontWeight+' '+cs.fontSize+' '+cs.fontFamily;const w=_cv.measureText(el.value||el.placeholder||'').width+(parseFloat(cs.paddingLeft)||0)+(parseFloat(cs.paddingRight)||0)+18;el.style.width=Math.min(Math.max(w,90),120)+'px'};
+const fitUI=()=>{document.querySelectorAll('textarea.ta').forEach(grow);document.querySelectorAll('input.fit').forEach(fitW)};
 const sum=(a,k)=>a.reduce((t,x)=>t+(xv(x[k])||0),0);
 let S=null;try{S=JSON.parse(localStorage.getItem('ledger-v1'))}catch(e){}
 if(!S){S={updated:iso(new Date()),bank:'',useMe:true,useI:true,income:[],owedMe:[],iOwe:[],log:[],loans:[],fixed:[],notes:{},
@@ -123,7 +129,7 @@ if(!S.log)S.log=[];
 const cardSel={k:'card',t:'select'},cardBankSel={k:'card',t:'select',bank:true};
 const SEC={
  log:{cols:[{k:'dt',t:'date'},{k:'n',ph:'Name'},{k:'d',ph:'Description of expense'},{k:'a',t:'math',ph:'Amount',w:100},{k:'c',ph:'Comment'}],def:()=>({dt:iso(new Date()),n:'',d:'',a:'',c:''}),amt:'a'},
- income:{cols:[{k:'d',ph:'Description'},{k:'a',t:'math',ph:'Amount',w:90},{k:'dt',t:'date'},{k:'rep',t:'checkbox'},{k:'c',ph:'Comment'}],def:()=>({d:'',a:'',dt:S.updated,rep:false,c:''}),amt:'a'},
+ income:{cols:[{k:'d',t:'ta',ph:'Description'},{k:'a',t:'math',ph:'Amount',w:90,fit:true},{k:'dt',t:'date'},{k:'rep',t:'checkbox'},{k:'c',ph:'Comment'}],def:()=>({d:'',a:'',dt:S.updated,rep:false,c:''}),amt:'a'},
  owedMe:{cols:[{k:'n',ph:'Name'},{k:'a',t:'math',ph:'Amount',w:90},{k:'c',ph:'Comment'}],def:()=>({n:'',a:'',c:''}),amt:'a'},
  iOwe:{cols:[{k:'n',ph:'Name'},{k:'a',t:'math',ph:'Amount',w:90},{k:'c',ph:'Comment'}],def:()=>({n:'',a:'',c:''}),amt:'a'},
  loans:{cols:[{k:'n',ph:'Loan'},{k:'rem',t:'number',ph:'Remaining',w:100},{k:'a',t:'number',ph:'Monthly',w:90},{t:'calc'},{k:'paid',t:'months'},{k:'c',ph:'Comment'}],def:()=>({n:'',rem:'',a:'',paid:[],c:''}),amt:'rem'},
@@ -136,7 +142,8 @@ const mlab=a=>a.length?[...a].sort().map(k=>{const[y,m]=k.split('-').map(Number)
 function tgM(k,i,v,el){const a=S[k][i].paid=S[k][i].paid||[],x=a.indexOf(v);if(el.checked){if(x<0)a.push(v)}else if(x>=0)a.splice(x,1);save();el.closest('details').querySelector('summary').textContent=mlab(a);calc()}
 function cell(key,i,c,r){
  const h=`oninput="up('${key}',${i},'${c.k}',this.value,'${c.t||''}')"`,w=c.w?`style="min-width:${c.w}px"`:'';
- if(c.t==='math')return`<td><input type="text" inputmode="decimal" autocomplete="off" style="min-width:${c.w||90}px" placeholder="${c.ph||''}" value="${esc(r[c.k])}" ${h} aria-label="${c.ph||c.k}"><div class="ev" id="eq-${key}-${i}"></div></td>`;
+ if(c.t==='ta')return`<td><textarea class="ta" rows="1" placeholder="${c.ph||''}" aria-label="${c.ph||c.k}" oninput="up('${key}',${i},'${c.k}',this.value);grow(this)">${esc(r[c.k])}</textarea></td>`;
+ if(c.t==='math')return`<td><input ${c.fit?'class="fit" ':''}type="text" inputmode="decimal" autocomplete="off" style="min-width:${c.w||90}px" placeholder="${c.ph||''}" value="${esc(r[c.k])}" ${h} aria-label="${c.ph||c.k}"><div class="ev" id="eq-${key}-${i}"></div></td>`;
  if(c.t==='calc')return`<td class="n"><b id="ll${i}">—</b></td>`;
  if(c.t==='months'){const u=pd(S.updated),have=r[c.k]||[],keys=[];for(let k=1;k<=24;k++){const d=new Date(u.getFullYear(),u.getMonth()+k,1);keys.push(mkey(d))}have.forEach(x=>{if(!keys.includes(x))keys.push(x)});keys.sort();
   return`<td><details class="dd"><summary>${mlab(have)}</summary><div class="ddl">${keys.map(x=>`<label class="chk"><input type="checkbox" ${have.includes(x)?'checked':''} onchange="tgM('${key}',${i},'${x}',this)"> ${mfull(x)}</label>`).join('')}</div></details></td>`}
@@ -146,8 +153,9 @@ function cell(key,i,c,r){
 function draw(key){
  const sc=SEC[key];
  document.getElementById('t-'+key).innerHTML=`<table><thead><tr>${HEAD[key].map(h=>`<th>${h}</th>`).join('')}<th></th></tr></thead><tbody>${
-  S[key].map((r,i)=>'<tr>'+sc.cols.map(c=>cell(key,i,c,r)).join('')+`<td><button class="x" onclick="del('${key}',${i})" aria-label="Remove row">×</button></td></tr>`).join('')||`<tr><td colspan="9" class="mute">Nothing here yet.</td></tr>`}</tbody></table>`}
+  S[key].map((r,i)=>'<tr>'+sc.cols.map(c=>cell(key,i,c,r)).join('')+`<td><button class="x" onclick="del('${key}',${i})" aria-label="Remove row">×</button></td></tr>`).join('')||`<tr><td colspan="9" class="mute">Nothing here yet.</td></tr>`}</tbody></table>`;fitUI()}
 function up(k,i,f,v,t){S[k][i][f]=v;save();calc()}
+document.addEventListener('input',e=>{if(e.target.matches&&e.target.matches('input.fit'))fitW(e.target)});
 function add(k){S[k].push(SEC[k].def());save();draw(k);calc()}
 function del(k,i){S[k].splice(i,1);save();draw(k);calc()}
 function upCard(n,f,v){S.cards[n][f]=v;save();calc()}
@@ -213,10 +221,9 @@ const B=document.getElementById('bank');B.value=S.bank;B.oninput=()=>{S.bank=B.v
 ['useMe','useI'].forEach(k=>{const e=document.getElementById(k);e.checked=S[k];e.onchange=()=>{S[k]=e.checked;save();calc()}});
 document.querySelectorAll('[data-note]').forEach(t=>{t.value=S.notes[t.dataset.note]||'';t.oninput=()=>{S.notes[t.dataset.note]=t.value;save()}});
 Object.keys(SEC).forEach(draw);calc();
-const grow=t=>{t.style.height='auto';t.style.height=(t.scrollHeight+2)+'px'};
 const autos=[...document.querySelectorAll('.fl textarea')];
 autos.forEach(t=>{t.addEventListener('input',()=>grow(t));grow(t)});
-const growAll=()=>autos.forEach(grow);
+const growAll=()=>{autos.forEach(grow);fitUI()};
 window.addEventListener('resize',growAll);window.addEventListener('load',growAll);
 if(document.fonts&&document.fonts.ready)document.fonts.ready.then(growAll);
 </script></body></html>
