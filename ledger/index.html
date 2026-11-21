@@ -42,6 +42,9 @@ th{text-align:left;font:500 13px Barlow,sans-serif;color:var(--mute);padding:0 4
 td{padding:3px 3px;vertical-align:middle}
 td.n,th.n{text-align:right}
 #t-owedMe td{vertical-align:top}
+.cw{position:relative;display:inline-block}.cal{position:absolute;z-index:30;top:calc(100% + 6px);left:0;width:268px;background:var(--panel);border:1px solid var(--line);border-top:3px solid var(--brass);border-radius:3px;padding:10px;box-shadow:0 8px 24px rgba(0,0,0,.35)}
+.cn{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}.cn button{padding:3px 10px}.cg{display:grid;grid-template-columns:repeat(7,1fr);gap:3px}.cd{font-size:12px;color:var(--mute);text-align:center;padding:2px 0}
+.dy{padding:6px 0;border:1px solid transparent;color:var(--text);font-weight:500}.dy:hover{background:var(--brass);color:#171b1f}.dy.td{border-color:var(--brass)}.dy.hs{box-shadow:inset 0 -3px 0 var(--brass)}
 .ds{border:1px solid var(--line);border-radius:3px;background:var(--panel2);padding:12px;margin-bottom:12px}.dh{display:flex;gap:10px;align-items:baseline;margin-bottom:8px}
 #t-log td{vertical-align:top}
 .qe{border:1px solid var(--line);border-radius:3px;background:var(--panel2);padding:12px;margin-bottom:14px}
@@ -108,7 +111,7 @@ button.x{border-color:var(--line);color:var(--mute);padding:5px 9px}button.x:hov
 <div class="lp" id="view-log" hidden>
  <section class="p">
   <div class="ph"><div class="hb"><button type="button" onclick="showView('main')">Back to tracker</button><h2>Expense log: money owed to me</h2></div><span class="tot pos" id="tot-log"></span></div>
-  <div class="qd" style="margin-bottom:14px"><button type="button" id="lgDateBtn">+ Add date</button><input type="date" id="lgDate" class="vh" aria-label="Expense date"><span class="mute">Pick a date, then enter the name, description and amount for it.</span></div>
+  <div class="qd" style="margin-bottom:14px"><span class="cw"><button type="button" id="lgDateBtn" aria-haspopup="dialog" aria-expanded="false">+ Add date</button><div id="lgCal" class="cal" role="dialog" aria-label="Choose a date" hidden></div></span><span class="mute">Pick a date, then enter the name, description and amount for it.</span></div>
   <datalist id="lgnames"></datalist>
   <div class="mute" style="margin-bottom:10px">Enter each expense you paid for someone. Each person’s name and total appear under “People owe me” on the main page. The name “LC” is shown but never added to your bank balance or the totals.</div>
   <div id="t-log"></div>
@@ -196,11 +199,18 @@ function lgSec(d){return[...document.querySelectorAll('#t-log .ds')].find(x=>x.d
 function lgFocusLast(d){const sec=lgSec(d);if(!sec)return;const rows=sec.querySelectorAll('tbody tr'),r=rows[rows.length-1];if(r){r.querySelector('input').focus()}}
 function lgAddRow(d){S.log.push({dt:d,n:'',d:'',a:'',c:''});save();draw('log');calc();lgFocusLast(d)}
 function lgPick(v){if(!v)return;const had=S.log.some(r=>r.dt===v);if(!had){S.log.push({dt:v,n:'',d:'',a:'',c:''});save()}draw('log');calc();const sec=lgSec(v);if(sec){sec.scrollIntoView({block:'nearest'});const rows=[...sec.querySelectorAll('tbody tr')];const r=had?rows[rows.length-1]:rows[0];if(r)r.querySelector('input').focus()}}
-(function(){const b=document.getElementById('lgDateBtn'),i=document.getElementById('lgDate');
- b.onclick=()=>{try{if(i.showPicker){i.showPicker();return}}catch(e){}i.classList.remove('vh');i.focus()};
- const done=()=>{i.value='';setTimeout(()=>{i.blur();i.classList.add('vh')},0)};
- const take=()=>{const v=i.value;if(!/^\d{4}-\d{2}-\d{2}$/.test(v)||v<'2000-01-01'||v>'2100-12-31')return;done();setTimeout(()=>lgPick(v),0)};
- i.addEventListener('change',take);i.addEventListener('input',take);
+(function(){const b=document.getElementById('lgDateBtn'),cal=document.getElementById('lgCal');let cy=0,cm=0;
+ const MN=['January','February','March','April','May','June','July','August','September','October','November','December'];
+ const render=()=>{const has=new Set(S.log.map(r=>r.dt)),today=iso(new Date()),off=(new Date(cy,cm,1).getDay()+6)%7,dim=new Date(cy,cm+1,0).getDate();let h=`<div class="cn"><button type="button" data-nav="-1" aria-label="Previous month">‹</button><b>${MN[cm]} ${cy}</b><button type="button" data-nav="1" aria-label="Next month">›</button></div><div class="cg">`+['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map(x=>`<span class="cd">${x}</span>`).join('');
+  for(let k=0;k<off;k++)h+='<span></span>';
+  for(let d=1;d<=dim;d++){const v=cy+'-'+String(cm+1).padStart(2,'0')+'-'+String(d).padStart(2,'0');h+=`<button type="button" class="dy${v===today?' td':''}${has.has(v)?' hs':''}" data-d="${v}" aria-label="${lgFmt(v)}">${d}</button>`}
+  cal.innerHTML=h+'</div>'};
+ const close=()=>{cal.hidden=true;b.setAttribute('aria-expanded','false')};
+ const open=()=>{const t=new Date();cy=t.getFullYear();cm=t.getMonth();render();cal.hidden=false;b.setAttribute('aria-expanded','true')};
+ b.addEventListener('click',e=>{e.stopPropagation();cal.hidden?open():close()});
+ cal.addEventListener('click',e=>{e.stopPropagation();const n=e.target.closest('[data-nav]'),d=e.target.closest('[data-d]');if(n){cm+=+n.dataset.nav;if(cm<0){cm=11;cy--}else if(cm>11){cm=0;cy++}render();return}if(d){close();lgPick(d.dataset.d)}});
+ document.addEventListener('click',()=>{if(!cal.hidden)close()});
+ document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!cal.hidden){close();b.focus()}});
  document.getElementById('t-log').addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.matches&&e.target.matches('input[aria-label="Amount"]')){const sec=e.target.closest('.ds'),rows=sec.querySelectorAll('tbody tr');if(e.target.closest('tr')===rows[rows.length-1]){e.preventDefault();lgAddRow(sec.dataset.d)}}})})();
 const lgKey=r=>String(r.n||'').trim().toLowerCase();
 function lgAfter(){save();draw('log');calc()}
