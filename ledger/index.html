@@ -42,6 +42,11 @@ th{text-align:left;font:500 13px Barlow,sans-serif;color:var(--mute);padding:0 4
 td{padding:3px 3px;vertical-align:middle}
 td.n,th.n{text-align:right}
 #t-owedMe td{vertical-align:top}
+.ds{border:1px solid var(--line);border-radius:3px;background:var(--panel2);padding:12px;margin-bottom:12px}.dh{display:flex;gap:10px;align-items:baseline;margin-bottom:8px}
+#t-log td{vertical-align:top}
+.qe{border:1px solid var(--line);border-radius:3px;background:var(--panel2);padding:12px;margin-bottom:14px}
+.vh{position:absolute;opacity:0;pointer-events:none;width:1px;height:1px}
+.qrow{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}.qrow input{flex:1 1 150px}.qrow input.qa{flex:0 1 130px}.qd{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 #t-owedMe td,#t-iOwe td,#t-income td,#t-log td{vertical-align:top}
 #t-owedMe button.x,#t-iOwe button.x,#t-income button.x,#t-log button.x{margin-top:4px}
 #t-income td input[type=checkbox]{margin-top:12px}
@@ -103,8 +108,10 @@ button.x{border-color:var(--line);color:var(--mute);padding:5px 9px}button.x:hov
 <div class="lp" id="view-log" hidden>
  <section class="p">
   <div class="ph"><div class="hb"><button type="button" onclick="showView('main')">Back to tracker</button><h2>Expense log: money owed to me</h2></div><span class="tot pos" id="tot-log"></span></div>
+  <div class="qd" style="margin-bottom:14px"><button type="button" id="lgDateBtn">+ Add date</button><input type="date" id="lgDate" class="vh" aria-label="Expense date"><span class="mute">Pick a date, then enter the name, description and amount for it.</span></div>
+  <datalist id="lgnames"></datalist>
   <div class="mute" style="margin-bottom:10px">Enter each expense you paid for someone. Each person’s name and total appear under “People owe me” on the main page. The name “LC” is shown but never added to your bank balance or the totals.</div>
-  <div class="w" id="t-log"></div><button onclick="add('log')">+ Add expense</button>
+  <div id="t-log"></div>
   <div id="logbyname" class="w" style="margin-top:18px"></div>
   <textarea data-note="log" placeholder="Comments on the expense log…"></textarea>
  </section>
@@ -131,14 +138,14 @@ const save=()=>{try{localStorage.setItem('ledger-v1',JSON.stringify(S))}catch(e)
 if(!S.log)S.log=[];if(!S.logc)S.logc={};
 const cardSel={k:'card',t:'select'},cardBankSel={k:'card',t:'select',bank:true};
 const SEC={
- log:{cols:[{k:'dt',t:'date'},{k:'n',ph:'Name'},{k:'d',ph:'Description of expense'},{k:'a',t:'math',ph:'Amount',w:100},{k:'c',ph:'Comment'}],def:()=>({dt:iso(new Date()),n:'',d:'',a:'',c:''}),amt:'a'},
+ log:{cols:[{k:'n',ph:'Name',list:'lgnames'},{k:'d',ph:'Description of expense'},{k:'a',t:'math',ph:'Amount',w:100},{k:'c',ph:'Comment'}],def:()=>({dt:iso(new Date()),n:'',d:'',a:'',c:''}),amt:'a'},
  income:{cols:[{k:'d',t:'ta',ph:'Description'},{k:'a',t:'math',ph:'Amount',w:90,fit:true},{k:'dt',t:'date'},{k:'rep',t:'checkbox'},{k:'c',ph:'Comment'}],def:()=>({d:'',a:'',dt:S.updated,rep:false,c:''}),amt:'a'},
  owedMe:{cols:[{k:'n',ph:'Name'},{k:'a',t:'math',ph:'Amount',w:90},{k:'c',ph:'Comment'}],def:()=>({n:'',a:'',c:''}),amt:'a'},
  iOwe:{cols:[{k:'n',ph:'Name'},{k:'a',t:'math',ph:'Amount',w:90},{k:'c',ph:'Comment'}],def:()=>({n:'',a:'',c:''}),amt:'a'},
  loans:{cols:[{k:'n',ph:'Loan'},{k:'rem',t:'number',ph:'Remaining',w:100},{k:'a',t:'number',ph:'Monthly',w:90},{t:'calc'},{k:'paid',t:'months'},{k:'c',ph:'Comment'}],def:()=>({n:'',rem:'',a:'',paid:[],c:''}),amt:'rem'},
  fixed:{cols:[{k:'d',ph:'Description'},{k:'a',t:'number',ph:'Amount',w:90},{k:'dt',t:'date'},cardBankSel,{k:'rep',t:'checkbox'},{k:'c',ph:'Comment'}],def:()=>({d:'',a:'',dt:S.updated,card:'HSBC',rep:false,c:''}),amt:'a'}
 };
-const HEAD={log:['Date','Name','Description','Amount','Comment'],income:['Description','Amount','Date','Repeats<br>monthly','Comment'],owedMe:['Name','Amount','Comment'],iOwe:['Name','Amount','Comment'],loans:['Loan','Remaining amount','Monthly','After payments','Paid months','Comment'],fixed:['Description','Amount','Bill date','Card / Bank','Repeats monthly','Comment']};
+const HEAD={log:['Name','Description','Amount','Comment'],income:['Description','Amount','Date','Repeats<br>monthly','Comment'],owedMe:['Name','Amount','Comment'],iOwe:['Name','Amount','Comment'],loans:['Loan','Remaining amount','Monthly','After payments','Paid months','Comment'],fixed:['Description','Amount','Bill date','Card / Bank','Repeats monthly','Comment']};
 const mkey=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
 const mfull=k=>{const[y,m]=k.split('-').map(Number);return new Date(y,m-1,1).toLocaleDateString('en-GB',{month:'long',year:'numeric'})};
 const mlab=a=>a.length?[...a].sort().map(k=>{const[y,m]=k.split('-').map(Number);return new Date(y,m-1,1).toLocaleDateString('en-GB',{month:'short',year:'2-digit'})}).join(', '):'Select months';
@@ -152,8 +159,9 @@ function cell(key,i,c,r){
   return`<td><details class="dd"><summary>${mlab(have)}</summary><div class="ddl">${keys.map(x=>`<label class="chk"><input type="checkbox" ${have.includes(x)?'checked':''} onchange="tgM('${key}',${i},'${x}',this)"> ${mfull(x)}</label>`).join('')}</div></details></td>`}
  if(c.t==='checkbox')return`<td style="text-align:center"><input type="checkbox" style="width:auto" ${r[c.k]?'checked':''} onchange="up('${key}',${i},'${c.k}',this.checked)" aria-label="Repeats every month"></td>`;
  if(c.t==='select')return`<td><select ${h.replace('oninput','onchange')}>${(c.bank?[...CARDS,'Bank']:CARDS).map(x=>`<option${r[c.k]===x?' selected':''}>${x}</option>`).join('')}</select></td>`;
- return`<td><input ${w} type="${c.t||'text'}" ${c.t==='number'?'step="0.01"':''} placeholder="${c.ph||''}" value="${esc(r[c.k])}" ${h} aria-label="${c.ph||c.k}"></td>`}
+ return`<td><input ${w} ${c.list?'list="'+c.list+'" ':''}type="${c.t||'text'}" ${c.t==='number'?'step="0.01"':''} placeholder="${c.ph||''}" value="${esc(r[c.k])}" ${h} aria-label="${c.ph||c.k}"></td>`}
 function draw(key){
+ if(key==='log')return drawLog();
  const sc=SEC[key];
  document.getElementById('t-'+key).innerHTML=`<table><thead><tr>${HEAD[key].map(h=>`<th>${h}</th>`).join('')}<th></th></tr></thead><tbody>${
   S[key].map((r,i)=>'<tr>'+sc.cols.map(c=>cell(key,i,c,r)).join('')+`<td><button class="x" onclick="del('${key}',${i})" aria-label="Remove row">×</button></td></tr>`).join('')||`<tr><td colspan="9" class="mute">Nothing here yet.</td></tr>`}</tbody></table>`;fitUI()}
@@ -181,6 +189,17 @@ const cls=n=>n<0?'neg':'';
 function occ(d0,rep,u){if(!rep)return d0>=u?[d0]:[];const out=[],end=new Date(u.getFullYear(),u.getMonth()+3,0);for(let k=0;k<60;k++){const y=d0.getFullYear(),m=d0.getMonth()+k,dim=new Date(y,m+1,0).getDate(),d=new Date(y,m,Math.min(d0.getDate(),dim));if(d>end)break;if(d>=u)out.push(d)}return out}
 function showView(v){document.querySelector('main').hidden=v==='log';document.getElementById('view-log').hidden=v!=='log';window.scrollTo(0,0)}
 const isLC=n=>String(n||'').trim().toLowerCase()==='lc';
+const lgFmt=d=>d?pd(d).toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short',year:'numeric'}):'No date';
+function drawLog(){const host=document.getElementById('t-log');if(!host)return;const by=new Map();S.log.forEach((r,i)=>{const k=r.dt||'';if(!by.has(k))by.set(k,[]);by.get(k).push(i)});const ds=[...by.keys()].sort().reverse();
+ host.innerHTML=ds.length?ds.map(d=>{const ix=by.get(d),n=ix.filter(i=>S.log[i].n||S.log[i].a||S.log[i].d).length;return`<div class="ds" data-d="${d}"><div class="dh"><b>${lgFmt(d)}</b><span class="mute">${n} ${n===1?'entry':'entries'}</span></div><div class="w"><table><thead><tr>${HEAD.log.map(h=>`<th>${h}</th>`).join('')}<th></th></tr></thead><tbody>${ix.map(i=>'<tr>'+SEC.log.cols.map(c=>cell('log',i,c,S.log[i])).join('')+`<td><button class="x" onclick="del('log',${i})" aria-label="Remove row">×</button></td></tr>`).join('')}</tbody></table></div><button type="button" onclick="lgAddRow('${d}')">+ Add entry</button></div>`}).join(''):'<div class="mute">No dates yet. Click “Add date” to pick one.</div>'}
+function lgSec(d){return[...document.querySelectorAll('#t-log .ds')].find(x=>x.dataset.d===d)}
+function lgFocusLast(d){const sec=lgSec(d);if(!sec)return;const rows=sec.querySelectorAll('tbody tr'),r=rows[rows.length-1];if(r){r.querySelector('input').focus()}}
+function lgAddRow(d){S.log.push({dt:d,n:'',d:'',a:'',c:''});save();draw('log');calc();lgFocusLast(d)}
+function lgPick(v){if(!v)return;const had=S.log.some(r=>r.dt===v);if(!had){S.log.push({dt:v,n:'',d:'',a:'',c:''});save()}draw('log');calc();const sec=lgSec(v);if(sec){sec.scrollIntoView({block:'nearest'});const rows=[...sec.querySelectorAll('tbody tr')];const r=had?rows[rows.length-1]:rows[0];if(r)r.querySelector('input').focus()}}
+(function(){const b=document.getElementById('lgDateBtn'),i=document.getElementById('lgDate');
+ b.onclick=()=>{try{if(i.showPicker){i.showPicker();return}}catch(e){}i.classList.remove('vh');i.focus()};
+ i.addEventListener('change',()=>{const v=i.value;i.value='';lgPick(v)});
+ document.getElementById('t-log').addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.matches&&e.target.matches('input[aria-label="Amount"]')){const sec=e.target.closest('.ds'),rows=sec.querySelectorAll('tbody tr');if(e.target.closest('tr')===rows[rows.length-1]){e.preventDefault();lgAddRow(sec.dataset.d)}}})})();
 const lgKey=r=>String(r.n||'').trim().toLowerCase();
 function lgAfter(){save();draw('log');calc()}
 function lgRename(k,v){const nv=String(v).trim();S.log.forEach(r=>{if(lgKey(r)===k)r.n=nv});if(S.logc&&S.logc[k]!==undefined){const nk=nv.toLowerCase();if(nk!==k){if(S.logc[nk]===undefined)S.logc[nk]=S.logc[k];delete S.logc[k]}}lgAfter()}
@@ -189,7 +208,7 @@ function lgComment(k,v){S.logc=S.logc||{};if(String(v).trim())S.logc[k]=v;else d
 const lgPending=new WeakMap();
 function lgDel(k,btn){if(lgPending.has(btn)){clearTimeout(lgPending.get(btn));S.log=S.log.filter(r=>lgKey(r)!==k);if(S.logc)delete S.logc[k];lgAfter();return}btn.textContent='Sure?';btn.style.width='auto';btn.title='Click again to delete this person and all their expense log entries';lgPending.set(btn,setTimeout(()=>{lgPending.delete(btn);btn.textContent='×';btn.style.width=''},4000))}
 function logGroups(){const g=new Map();S.log.forEach(r=>{const a=xv(r.a)||0,nm=String(r.n||'').trim()||'(no name)',k=nm.toLowerCase();if(!a&&!String(r.n||'').trim())return;const e=g.get(k)||{n:nm,k:(String(r.n||'').trim()?k:''),t:0,c:0,lc:isLC(nm)};e.t+=a;e.c++;g.set(k,e)});return[...g.values()]}
-function logViews(){const gs=logGroups(),tot=gs.filter(x=>!x.lc).reduce((t,x)=>t+x.t,0),tg=x=>x.lc?' <span class="tag">not in balance</span>':'';
+function logViews(){const gs=logGroups();{const dl=document.getElementById('lgnames');if(dl)dl.innerHTML=gs.filter(x=>x.k!=='').map(x=>`<option value="${esc(x.n)}">`).join('')}const tot=gs.filter(x=>!x.lc).reduce((t,x)=>t+x.t,0),tg=x=>x.lc?' <span class="tag">not in balance</span>':'';
  document.getElementById('tot-log').textContent=money(tot);
  {const tb=document.querySelector('#t-owedMe tbody');if(tb){const have=tb.querySelectorAll('tr.lg'),sig=JSON.stringify([gs.map(x=>[x.k,x.n,x.t]),S.logc]);if(!(have.length===gs.length&&tb.dataset.sig===sig)){have.forEach(r=>r.remove());tb.dataset.sig=sig;const empty=tb.querySelector('td.mute[colspan]');if(empty)empty.closest('tr').hidden=gs.length>0;
   gs.forEach(x=>{const tr=document.createElement('tr');tr.className='lg';tr.innerHTML=`<td><input value="${esc(x.k===''?'':x.n)}" placeholder="Name" aria-label="Name" onchange="lgRename('${esc(x.k).replace(/'/g,"\\'")}',this.value)"></td><td><input inputmode="decimal" autocomplete="off" value="${x.t.toFixed(2)}" aria-label="Amount" onchange="lgAmount('${esc(x.k).replace(/'/g,"\\'")}',this.value)"></td><td><input value="${esc((S.logc||{})[x.k]||'')}" placeholder="${x.lc?'Not in balance':'Expense log'}" aria-label="Comment" onchange="lgComment('${esc(x.k).replace(/'/g,"\\'")}',this.value)"></td><td><button class="x" type="button" onclick="lgDel('${esc(x.k).replace(/'/g,"\\'")}',this)" aria-label="Remove ${esc(x.n)} and all their expense log entries">×</button></td>`;tb.appendChild(tr)})}}}
