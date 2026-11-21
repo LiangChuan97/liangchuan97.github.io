@@ -53,7 +53,7 @@ button.x{border-color:var(--line);color:var(--mute);padding:5px 9px}button.x:hov
 </header>
 <main>
  <section class="p s3"><div class="ph"><h2>Bank balance</h2></div>
-  <label class="d">Balance in account today<input type="number" step="0.01" id="bank" placeholder="0.00"></label>
+  <label class="d">Balance in account today<input type="text" inputmode="decimal" autocomplete="off" id="bank" placeholder="0.00 or 1200+350-80"><span id="bank-eq" class="mute"></span></label>
   <label class="chk"><input type="checkbox" id="useMe"> Add what people owe me</label>
   <label class="chk"><input type="checkbox" id="useI"> Deduct what I owe people</label>
   <div class="calc"><div><span>Bank</span><span id="c-bank"></span></div><div><span>+ Owed to me</span><span id="c-me"></span></div><div><span>− I owe</span><span id="c-io"></span></div></div>
@@ -151,10 +151,10 @@ const mon=off=>{const u=pd(S.updated);return new Date(u.getFullYear(),u.getMonth
 const cls=n=>n<0?'neg':'';
 function occ(d0,rep,u){if(!rep)return d0>=u?[d0]:[];const out=[],end=new Date(u.getFullYear(),u.getMonth()+3,0);for(let k=0;k<60;k++){const y=d0.getFullYear(),m=d0.getMonth()+k,dim=new Date(y,m+1,0).getDate(),d=new Date(y,m,Math.min(d0.getDate(),dim));if(d>end)break;if(d>=u)out.push(d)}return out}
 function calc(){
- const me=sum(S.owedMe,'a'),io=sum(S.iOwe,'a'),bank=+S.bank||0;
+ const me=sum(S.owedMe,'a'),io=sum(S.iOwe,'a'),bank=xv(S.bank)||0;
  const adj=bank+(S.useMe?me:0)-(S.useI?io:0);
  const set=(id,v)=>document.getElementById(id).textContent=v;
- set('c-bank',money(bank));set('c-me',S.useMe?money(me):'off');set('c-io',S.useI?money(-io):'off');
+ set('c-bank',money(bank));{const raw=String(S.bank??'').trim(),pl=/^[0-9]*\.?[0-9]*$/.test(raw.replace(/[$,\s]/g,'')),v=xv(raw),q=document.getElementById('bank-eq');q.className=isNaN(v)?'neg':'mute';q.textContent=raw===''||pl?'':(isNaN(v)?'Check formula':'= '+money(v))}set('c-me',S.useMe?money(me):'off');set('c-io',S.useI?money(-io):'off');
  const a=document.getElementById('adj');a.textContent=money(adj);a.style.color=adj<0?'var(--bad)':'';
  set('tot-income',money(sum(S.income,'a')));set('tot-owedMe',money(me));set('tot-iOwe',money(io));
  let lt=0;S.loans.forEach((l,i)=>{const e=document.getElementById('ll'+i),has=String(l.rem??'')!=='',left=Math.max(0,(+l.rem||0)-(+l.a||0)*(l.paid||[]).length);if(has)lt+=left;if(e)e.textContent=has?money(left):'—'});
