@@ -54,8 +54,8 @@ td.n,th.n{text-align:right}
 .qe{border:1px solid var(--line);border-radius:3px;background:var(--panel2);padding:12px;margin-bottom:14px}
 .vh{position:absolute;opacity:0;pointer-events:none;width:1px;height:1px}
 .qrow{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}.qrow input{flex:1 1 150px}.qrow input.qa{flex:0 1 130px}.qd{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-#t-owedMe td,#t-iOwe td,#t-income td,#t-log td{vertical-align:top}
-#t-owedMe button.x,#t-iOwe button.x,#t-income button.x,#t-log button.x{margin-top:4px}
+#t-banks td,#t-owedMe td,#t-iOwe td,#t-income td,#t-log td{vertical-align:top}
+#t-banks button.x,#t-owedMe button.x,#t-iOwe button.x,#t-income button.x,#t-log button.x{margin-top:4px}
 #t-income td input[type=checkbox]{margin-top:12px}
 .tl td{padding:7px 8px;border-top:1px solid var(--line)}
 .tl tr.st td{color:var(--mute)}
@@ -76,10 +76,10 @@ button.x{border-color:var(--line);color:var(--mute);padding:5px 9px}button.x:hov
 </header>
 <main>
  <section class="p s3 fl"><div class="ph"><h2>Bank balance</h2></div>
-  <label class="d">Balance in account today<input type="text" inputmode="decimal" autocomplete="off" id="bank" placeholder="0.00 or 1200+350-80"><span id="bank-eq" class="mute"></span></label>
+  <div class="w" id="t-banks"></div><button type="button" onclick="add('banks')">+ Add bank</button>
   <label class="chk"><input type="checkbox" id="useMe"> Add what people owe me</label>
   <label class="chk"><input type="checkbox" id="useI"> Deduct what I owe people</label>
-  <div class="calc"><div><span>Bank</span><span id="c-bank"></span></div><div><span>+ Owed to me</span><span id="c-me"></span></div><div><span>− I owe</span><span id="c-io"></span></div></div>
+  <div class="calc"><div><span>Total in banks</span><span id="c-bank"></span></div><div><span>+ Owed to me</span><span id="c-me"></span></div><div><span>− I owe</span><span id="c-io"></span></div></div>
   <div class="mute" style="margin-top:10px">Adjusted balance</div><div class="big" id="adj"></div>
   <textarea data-note="bank" placeholder="Comments on balance…"></textarea></section>
 
@@ -148,17 +148,19 @@ S.fixed.forEach(f=>{if(!f.dt){const u=pd(S.updated);f.dt=iso(new Date(u.getFullY
 CARDS.length=0;CARDS.push(...Object.keys(S.cards));
 CARDS.forEach(n=>{const c=S.cards[n];if(c&&c.stmt===undefined)c.stmt=CUT[n]||''});
 const save=()=>{try{localStorage.setItem('ledger-v1',JSON.stringify(S))}catch(e){}};
+if(!Array.isArray(S.banks))S.banks=[{n:'Bank',a:S.bank||''}];
 if(!S.log)S.log=[];if(!S.logSubHide)S.logSubHide={};if(!S.logFilter)S.logFilter=[];if(!Array.isArray(S.tlMonths))S.tlMonths=S.tlMonth?[S.tlMonth]:[];if(!S.logc)S.logc={};
 const cardSel={k:'card',t:'select'},cardBankSel={k:'card',t:'select',bank:true};
 const SEC={
  log:{cols:[{k:'n',ph:'Name'},{k:'d',ph:'Description of expense'},{k:'a',t:'math',ph:'Amount',w:100},{k:'c',ph:'Comment'}],def:()=>({dt:iso(new Date()),n:'',d:'',a:'',c:''}),amt:'a'},
  income:{cols:[{k:'d',t:'ta',ph:'Description'},{k:'a',t:'math',ph:'Amount',w:90,fit:true},{k:'dt',t:'date'},{k:'rep',t:'checkbox'},{k:'c',ph:'Comment'}],def:()=>({d:'',a:'',dt:S.updated,rep:false,c:''}),amt:'a'},
+ banks:{cols:[{k:'n',ph:'Bank',w:100},{k:'a',t:'math',ph:'Balance',w:110}],def:()=>({n:'',a:''}),amt:'a'},
  owedMe:{cols:[{k:'n',ph:'Name'},{k:'a',t:'math',ph:'Amount',w:90},{k:'c',ph:'Comment'}],def:()=>({n:'',a:'',c:''}),amt:'a'},
  iOwe:{cols:[{k:'n',ph:'Name'},{k:'a',t:'math',ph:'Amount',w:90},{k:'c',ph:'Comment'}],def:()=>({n:'',a:'',c:''}),amt:'a'},
  loans:{cols:[{k:'n',ph:'Loan'},{k:'rem',t:'number',ph:'Remaining',w:100},{k:'a',t:'number',ph:'Monthly',w:90},{t:'calc'},{k:'paid',t:'months'},{k:'c',ph:'Comment'}],def:()=>({n:'',rem:'',a:'',paid:[],c:''}),amt:'rem'},
  fixed:{cols:[{k:'d',ph:'Description'},{k:'a',t:'number',ph:'Amount',w:90},{k:'dt',t:'date'},cardBankSel,{k:'rep',t:'checkbox'},{k:'c',ph:'Comment'}],def:()=>({d:'',a:'',dt:S.updated,card:'HSBC',rep:false,c:''}),amt:'a'}
 };
-const HEAD={log:['Name','Description','Amount','Comment'],income:['Description','Amount','Date','Repeats<br>monthly','Comment'],owedMe:['Name','Amount','Comment'],iOwe:['Name','Amount','Comment'],loans:['Loan','Remaining amount','Monthly','After payments','Paid months','Comment'],fixed:['Description','Amount','Bill date','Card / Bank','Repeats monthly','Comment']};
+const HEAD={banks:['Bank','Balance'],log:['Name','Description','Amount','Comment'],income:['Description','Amount','Date','Repeats<br>monthly','Comment'],owedMe:['Name','Amount','Comment'],iOwe:['Name','Amount','Comment'],loans:['Loan','Remaining amount','Monthly','After payments','Paid months','Comment'],fixed:['Description','Amount','Bill date','Card / Bank','Repeats monthly','Comment']};
 const mkey=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
 const mfull=k=>{const[y,m]=k.split('-').map(Number);return new Date(y,m-1,1).toLocaleDateString('en-GB',{month:'long',year:'numeric'})};
 const mlab=a=>a.length?[...a].sort().map(k=>{const[y,m]=k.split('-').map(Number);return new Date(y,m-1,1).toLocaleDateString('en-GB',{month:'short',year:'2-digit'})}).join(', '):'Select months';
@@ -275,12 +277,12 @@ function logViews(){const gs=logGroups();logSubs();const tot=gs.filter(x=>!x.lc)
  {const tb=document.querySelector('#t-owedMe tbody');if(tb){const have=tb.querySelectorAll('tr.lg'),sig=JSON.stringify([gs.map(x=>[x.k,x.n,x.t]),S.logc]);if(!(have.length===gs.length&&tb.dataset.sig===sig)){have.forEach(r=>r.remove());tb.dataset.sig=sig;const empty=tb.querySelector('td.mute[colspan]');if(empty)empty.closest('tr').hidden=gs.length>0;
   gs.forEach(x=>{const tr=document.createElement('tr');tr.className='lg';tr.innerHTML=`<td><input value="${esc(x.k===''?'':x.n)}" placeholder="Name" aria-label="Name" onchange="lgRename('${esc(x.k).replace(/'/g,"\\'")}',this.value)"></td><td><input inputmode="decimal" autocomplete="off" value="${x.t.toFixed(2)}" aria-label="Amount" onchange="lgAmount('${esc(x.k).replace(/'/g,"\\'")}',this.value)"></td><td><input value="${esc((S.logc||{})[x.k]||'')}" placeholder="${x.lc?'Not in balance':'Expense log'}" aria-label="Comment" onchange="lgComment('${esc(x.k).replace(/'/g,"\\'")}',this.value)"></td><td><button class="x" type="button" onclick="lgDel('${esc(x.k).replace(/'/g,"\\'")}',this)" aria-label="Remove ${esc(x.n)} and all their expense log entries">×</button></td>`;tb.appendChild(tr)})}}}
  const gv=gs.filter(x=>!lgActive()||S.logFilter.includes(x.k));document.getElementById('logbyname').innerHTML=gv.length?`<h2 style="margin:0 0 6px">Total (all dates)${lgActive()?' – filtered':''}</h2><table class="ls"><thead><tr><th>Name</th><th class="n">Entries</th><th class="n">Total owed</th></tr></thead><tbody>${gv.map(x=>`<tr><td>${esc(x.n)}${tg(x)}</td><td class="n">${x.c}</td><td class="n ${x.lc?'mute':'pos'}"><b>${money(x.t)}</b></td></tr>`).join('')}</tbody></table>`:''}
-function mathNotes(){['income','owedMe','iOwe','log'].forEach(k=>S[k].forEach((r,i)=>{const e=document.getElementById('eq-'+k+'-'+i);if(!e)return;const raw=String(r.a??'').trim(),pl=/^[0-9]*\.?[0-9]*$/.test(raw.replace(/[$,\s]/g,'')),v=xv(raw);e.className='ev '+(isNaN(v)?'neg':'mute');e.textContent=raw===''||pl?'':(isNaN(v)?'Check formula':'= '+money(v))}))}
+function mathNotes(){['banks','income','owedMe','iOwe','log'].forEach(k=>S[k].forEach((r,i)=>{const e=document.getElementById('eq-'+k+'-'+i);if(!e)return;const raw=String(r.a??'').trim(),pl=/^[0-9]*\.?[0-9]*$/.test(raw.replace(/[$,\s]/g,'')),v=xv(raw);e.className='ev '+(isNaN(v)?'neg':'mute');e.textContent=raw===''||pl?'':(isNaN(v)?'Check formula':'= '+money(v))}))}
 function calc(){mathNotes();logViews();
- const lg=sum(S.log.filter(r=>!isLC(r.n)),'a'),me=sum(S.owedMe.filter(r=>!isLC(r.n)),'a')+lg,io=sum(S.iOwe,'a'),bank=xv(S.bank)||0;
+ const lg=sum(S.log.filter(r=>!isLC(r.n)),'a'),me=sum(S.owedMe.filter(r=>!isLC(r.n)),'a')+lg,io=sum(S.iOwe,'a'),bank=sum(S.banks,'a');
  const adj=bank+(S.useMe?me:0)-(S.useI?io:0);
  const set=(id,v)=>document.getElementById(id).textContent=v;
- set('c-bank',money(bank));{const raw=String(S.bank??'').trim(),pl=/^[0-9]*\.?[0-9]*$/.test(raw.replace(/[$,\s]/g,'')),v=xv(raw),q=document.getElementById('bank-eq');q.className=isNaN(v)?'neg':'mute';q.textContent=raw===''||pl?'':(isNaN(v)?'Check formula':'= '+money(v))}set('c-me',S.useMe?money(me):'off');set('c-io',S.useI?money(-io):'off');
+ set('c-bank',money(bank));set('c-me',S.useMe?money(me):'off');set('c-io',S.useI?money(-io):'off');
  const a=document.getElementById('adj');a.textContent=money(adj);a.style.color=adj<0?'var(--bad)':'';
  set('tot-income',money(sum(S.income,'a')));set('tot-owedMe',money(me));set('tot-iOwe',money(io));
  let lt=0;S.loans.forEach((l,i)=>{const e=document.getElementById('ll'+i),has=String(l.rem??'')!=='',left=Math.max(0,(+l.rem||0)-(+l.a||0)*(l.paid||[]).length);if(has)lt+=left;if(e)e.textContent=has?money(left):'—'});
@@ -322,7 +324,6 @@ document.addEventListener('click',e=>{if(tlOpen&&!e.target.closest('.msel')){tlO
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&tlOpen){tlOpen='';tlSync()}});
 const U=document.getElementById('updated');U.value=S.updated;U.oninput=()=>{if(U.value){S.updated=U.value;save();calc()}};
 const UL=document.getElementById('updLock');UL.onclick=()=>{const lock=!U.disabled;U.disabled=lock;UL.textContent=lock?'Edit date':'Lock date';if(!lock)U.focus()};
-const B=document.getElementById('bank');B.value=S.bank;B.oninput=()=>{S.bank=B.value;save();calc()};
 ['useMe','useI'].forEach(k=>{const e=document.getElementById(k);e.checked=S[k];e.onchange=()=>{S[k]=e.checked;save();calc()}});
 document.querySelectorAll('[data-note]').forEach(t=>{t.value=S.notes[t.dataset.note]||'';t.oninput=()=>{S.notes[t.dataset.note]=t.value;save()}});
 Object.keys(SEC).forEach(draw);calc();
