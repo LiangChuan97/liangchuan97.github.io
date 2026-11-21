@@ -97,7 +97,7 @@ const iso=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+Stri
 const fd=d=>d.toLocaleDateString('en-GB',{day:'numeric',month:'short'});
 const money=n=>(n<0?'−':'')+'$'+Math.abs(n).toLocaleString('en-SG',{minimumFractionDigits:2,maximumFractionDigits:2});
 const esc=s=>String(s??'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
-const sum=(a,k)=>a.reduce((t,x)=>t+(+x[k]||0),0);
+const sum=(a,k)=>a.reduce((t,x)=>t+(xv(x[k])||0),0);
 let S=null;try{S=JSON.parse(localStorage.getItem('ledger-v1'))}catch(e){}
 if(!S){S={updated:iso(new Date()),bank:'',useMe:true,useI:true,income:[],owedMe:[],iOwe:[],loans:[],fixed:[],notes:{},
  cards:Object.fromEntries(CARDS.map((c,i)=>[c,{day:[15,20,25,28][i],cur:'',next:'',c:''}]))}}
@@ -106,9 +106,9 @@ CARDS.forEach(n=>{const c=S.cards[n];if(c&&c.stmt===undefined)c.stmt=CUT[n]||''}
 const save=()=>{try{localStorage.setItem('ledger-v1',JSON.stringify(S))}catch(e){}};
 const cardSel={k:'card',t:'select'},cardBankSel={k:'card',t:'select',bank:true};
 const SEC={
- income:{cols:[{k:'d',ph:'Description'},{k:'a',t:'number',ph:'Amount',w:90},{k:'dt',t:'date'},{k:'rep',t:'checkbox'},{k:'c',ph:'Comment'}],def:()=>({d:'',a:'',dt:S.updated,rep:false,c:''}),amt:'a'},
- owedMe:{cols:[{k:'n',ph:'Name'},{k:'a',t:'number',ph:'Amount',w:90},{k:'c',ph:'Comment'}],def:()=>({n:'',a:'',c:''}),amt:'a'},
- iOwe:{cols:[{k:'n',ph:'Name'},{k:'a',t:'number',ph:'Amount',w:90},{k:'c',ph:'Comment'}],def:()=>({n:'',a:'',c:''}),amt:'a'},
+ income:{cols:[{k:'d',ph:'Description'},{k:'a',t:'math',ph:'Amount',w:90},{k:'dt',t:'date'},{k:'rep',t:'checkbox'},{k:'c',ph:'Comment'}],def:()=>({d:'',a:'',dt:S.updated,rep:false,c:''}),amt:'a'},
+ owedMe:{cols:[{k:'n',ph:'Name'},{k:'a',t:'math',ph:'Amount',w:90},{k:'c',ph:'Comment'}],def:()=>({n:'',a:'',c:''}),amt:'a'},
+ iOwe:{cols:[{k:'n',ph:'Name'},{k:'a',t:'math',ph:'Amount',w:90},{k:'c',ph:'Comment'}],def:()=>({n:'',a:'',c:''}),amt:'a'},
  loans:{cols:[{k:'n',ph:'Loan'},{k:'rem',t:'number',ph:'Remaining',w:100},{k:'a',t:'number',ph:'Monthly',w:90},{t:'calc'},{k:'paid',t:'months'},{k:'c',ph:'Comment'}],def:()=>({n:'',rem:'',a:'',paid:[],c:''}),amt:'rem'},
  fixed:{cols:[{k:'d',ph:'Description'},{k:'a',t:'number',ph:'Amount',w:90},{k:'dt',t:'date'},cardBankSel,{k:'rep',t:'checkbox'},{k:'c',ph:'Comment'}],def:()=>({d:'',a:'',dt:S.updated,card:'HSBC',rep:false,c:''}),amt:'a'}
 };
@@ -119,6 +119,7 @@ const mlab=a=>a.length?[...a].sort().map(k=>{const[y,m]=k.split('-').map(Number)
 function tgM(k,i,v,el){const a=S[k][i].paid=S[k][i].paid||[],x=a.indexOf(v);if(el.checked){if(x<0)a.push(v)}else if(x>=0)a.splice(x,1);save();el.closest('details').querySelector('summary').textContent=mlab(a);calc()}
 function cell(key,i,c,r){
  const h=`oninput="up('${key}',${i},'${c.k}',this.value,'${c.t||''}')"`,w=c.w?`style="min-width:${c.w}px"`:'';
+ if(c.t==='math')return`<td><input type="text" inputmode="decimal" autocomplete="off" style="min-width:${c.w||90}px" placeholder="${c.ph||''}" value="${esc(r[c.k])}" ${h} aria-label="${c.ph||c.k}"><div class="ev" id="eq-${key}-${i}"></div></td>`;
  if(c.t==='calc')return`<td class="n"><b id="ll${i}">—</b></td>`;
  if(c.t==='months'){const u=pd(S.updated),have=r[c.k]||[],keys=[];for(let k=1;k<=24;k++){const d=new Date(u.getFullYear(),u.getMonth()+k,1);keys.push(mkey(d))}have.forEach(x=>{if(!keys.includes(x))keys.push(x)});keys.sort();
   return`<td><details class="dd"><summary>${mlab(have)}</summary><div class="ddl">${keys.map(x=>`<label class="chk"><input type="checkbox" ${have.includes(x)?'checked':''} onchange="tgM('${key}',${i},'${x}',this)"> ${mfull(x)}</label>`).join('')}</div></details></td>`}
@@ -150,7 +151,8 @@ function cardTotals(n){
 const mon=off=>{const u=pd(S.updated);return new Date(u.getFullYear(),u.getMonth()+off,1).toLocaleDateString('en-GB',{month:'long'})};
 const cls=n=>n<0?'neg':'';
 function occ(d0,rep,u){if(!rep)return d0>=u?[d0]:[];const out=[],end=new Date(u.getFullYear(),u.getMonth()+3,0);for(let k=0;k<60;k++){const y=d0.getFullYear(),m=d0.getMonth()+k,dim=new Date(y,m+1,0).getDate(),d=new Date(y,m,Math.min(d0.getDate(),dim));if(d>end)break;if(d>=u)out.push(d)}return out}
-function calc(){
+function mathNotes(){['income','owedMe','iOwe'].forEach(k=>S[k].forEach((r,i)=>{const e=document.getElementById('eq-'+k+'-'+i);if(!e)return;const raw=String(r.a??'').trim(),pl=/^[0-9]*\.?[0-9]*$/.test(raw.replace(/[$,\s]/g,'')),v=xv(raw);e.className='ev '+(isNaN(v)?'neg':'mute');e.textContent=raw===''||pl?'':(isNaN(v)?'Check formula':'= '+money(v))}))}
+function calc(){mathNotes();
  const me=sum(S.owedMe,'a'),io=sum(S.iOwe,'a'),bank=xv(S.bank)||0;
  const adj=bank+(S.useMe?me:0)-(S.useI?io:0);
  const set=(id,v)=>document.getElementById(id).textContent=v;
@@ -174,7 +176,7 @@ function calc(){
  if(fid){const e=document.querySelector('[data-f="'+fid+'"]');if(e){e.focus();try{e.setSelectionRange(ss,se)}catch(_){}}}
  // timeline
  S.fixed.filter(f=>f.card==='Bank'&&f.dt&&+f.a).forEach(f=>{const d0=pd(f.dt),nm=(f.d||'Fixed expense')+' (bank)';if(!f.rep){if(d0>=u)ev.push({d:d0,l:nm,a:-(+f.a),t:'out'});return}const end=new Date(u.getFullYear(),u.getMonth()+3,0);for(let k=0;k<60;k++){const y=d0.getFullYear(),m=d0.getMonth()+k,dim=new Date(y,m+1,0).getDate(),d=new Date(y,m,Math.min(d0.getDate(),dim));if(d>end)break;if(d>=u)ev.push({d,l:nm,a:-(+f.a),t:'out'})}});
- S.income.forEach(i=>{if(i.dt&&+i.a)occ(pd(i.dt),i.rep,u).forEach(d=>ev.push({d,l:i.d||'Income',a:+i.a,t:'in'}))});
+ S.income.forEach(i=>{const av=xv(i.a)||0;if(i.dt&&av)occ(pd(i.dt),i.rep,u).forEach(d=>ev.push({d,l:i.d||'Income',a:av,t:'in'}))});
  ev.sort((x,y)=>x.d-y.d||y.a-x.a);
  let b=adj;
  let tr=`<tr class="st"><td>${fd(u)}</td><td>Starting balance</td><td class="n">—</td><td class="n">${money(b)}</td></tr>`;
